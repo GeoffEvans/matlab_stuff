@@ -1,0 +1,59 @@
+# expects tiff-win32-3.6.1-2.exe installation in c:\GnuWin32
+# works with MATLAB R2008a
+# build with GHC 6.8.3
+
+
+MATLAB=C:\matlab\r2008a
+
+CC = ghc
+.SUFFIXES : .c .hs .o
+
+MEXFLAGS = -I$(MATLAB)\extern\include
+
+bindir = bin\win32
+objdir = $(bindir)\objs
+
+# FFI stub files go to objdir 
+CFLAGS = $(MEXFLAGS) -I$(objdir)
+LFLAGS = $(MATLAB)\extern\lib\win32\microsoft\libmx.lib $(MATLAB)\extern\lib\win32\microsoft\libmex.lib $(MATLAB)\extern\lib\win32\microsoft\libmat.lib \
+              C:\GnuWin32\lib\libtiff.lib
+
+
+# all: writetifcn.mexw32
+all: $(objdir) $(bindir)\writetif2.mexw32
+
+# create directory if missing
+$(objdir) :
+	mkdir $(objdir)
+
+# $(objdir)\Writetifcn.o: src\Writetifcn.hs
+# 	@$(CC) -c src\Writetifcn.hs -fglasgow-exts -odir $(objdir) -stubdir $(objdir) -hidir $(objdir)
+# # 	@-mv src\Writetifcn.o src\Writetifcn.hi src\Writetifcn_stub.c src\Writetifcn_stub.h src\Writetifcn_stub.o "$(objdir)"
+
+# # 	@$(CC) -c "$(<)" -fglasgow-exts
+
+Writetifcn_stub.h: $(objdir)\Writetifcn.o
+
+$(objdir)\dllMain.o: Writetifcn_stub.h
+
+$(bindir)\writetif2.mexw32: $(objdir)\dllMain.o
+	$(CC) -shared -o "$(@)" -odir $(objdir) $(objdir)\*.o writetif2.def $(LFLAGS)
+
+{src}.c{$(objdir)}.o:
+	@echo CC  $(<) ===^> $(@)
+	@$(CC) -c $(CFLAGS) "$(<)" -o "$(@)"
+
+.hs{$(objdir)}.o:
+	@echo GHC $(<) ===^> $(@)
+	@$(CC) -c "$(<)" -fglasgow-exts -odir $(objdir) -stubdir $(objdir) -hidir $(objdir)
+
+
+clean:
+	@-del /Q $(objdir)
+	@-del $(bindir)\writetif2.mexw32
+	@-del $(bindir)\writetif2.mexw32.a
+
+
+# Local Variables: 
+# compile-command:"\"c:/Program Files/Microsoft Visual Studio 9.0/VC/BIN/nmake\""
+# End:

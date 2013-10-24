@@ -1,0 +1,1 @@
+GifOfPolarisation([1, exp(1i * pi/2)], 'Left-handed');

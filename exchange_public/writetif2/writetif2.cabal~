@@ -1,0 +1,9 @@
+Name: writetif2
+Version: 0.0
+Synopsis: writetif replacement with alpha and XPOSTION, YPOSITION tags support
+License-file: LICENSE
+Author: Yakov ZAYTSEV
+Maintainer: Yakov ZAYTSEV <iakovz@gmail.com>
+Build-Depends: base
+
+Library: writetif.dll

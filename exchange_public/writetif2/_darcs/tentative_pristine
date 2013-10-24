@@ -1,0 +1,31 @@
+addfile ./bin/win32/writetif2.m
+hunk ./README 4
+-        > writetif2(arr, 'output.tif', [100, 200])
++	> g = imread('..\..\CIMG0006_resize.jpg');
++        > writetif2(g, 'output.tif', [50, 30])
+hunk ./README 7
+- 
++
++
++
++
++writetif2>..\enblend-enfuse-3.2\enblend.exe -vo outp.tif bin\win32\output.tif
++enblend: only one input file given. Enblend needs two or more overlapping input images in order to do blending calcu
++input.
++Input image "bin\win32\output.tif" RGB UINT8 position=7500x4500 size=800x600
++Output image size: [(7500, 4500) to (8300, 5100) = (800x600)]
++Loading next image: bin\win32\output.tif
++assembled images bounding box: [(0, 0) to (800, 600) = (800x600)]
++Writing final output...
++
++writetif2>
++
+hunk ./bin/win32/writetif2.m 1
++function writetif2(varargin)
++%WRITETIF2 Write TIFF image to graphics file.
++%   WRITETIF2(A,FILENAME,XY) writes the image A to the file specified by 
++%   FILENAME in the 8 bit/channel RGB TIFF with unassoc alpha =255 and
++%   position specified by XY
++%   FILENAME in the format specified by FMT.
++#mex
++

@@ -1,0 +1,9 @@
+function [ X ] = CircularConcave( R, Y )
+%  /
+% |
+%  \
+
+X = sqrt( 100 - Y .^ 2 );
+
+end
+

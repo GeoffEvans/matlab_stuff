@@ -1,0 +1,103 @@
+{-# OPTIONS -fglasgow-exts #-}
+module Tiff.LibTIFF -- (open, setField, tIFFTAG_IMAGEWIDTH .....
+where
+
+-- typedef	uint32 ttag_t;		/* directory tag */
+-- typedef	uint16 tdir_t;		/* directory index */
+-- typedef	uint16 tsample_t;	/* sample number */
+-- typedef	uint32 tstrip_t;	/* strip number */
+-- typedef uint32 ttile_t;		/* tile number */
+-- typedef	int32 tsize_t;		/* i/o size in bytes */
+-- typedef	void* tdata_t;		/* image data ref */
+-- typedef	uint32 toff_t;		/* file offset */
+
+
+import Foreign.Ptr
+import Foreign.C
+import Foreign.C.Types
+
+type TIFF = Ptr ()
+
+foreign import ccall unsafe "TIFFOpen" tIFFOpen :: CString -> CString -> IO TIFF
+
+-- 	tsize_t  TIFFWriteEncodedStrip(TIFF*  tif,  tstrip_t  strip,
+-- 	tdata_t buf, tsize_t size)
+foreign import ccall unsafe "TIFFWriteEncodedStrip" tIFFWriteEncodedStrip :: TIFF -> CUInt -> (Ptr ()) -> CUInt -> IO CUInt
+
+foreign import ccall unsafe "TIFFClose" tIFFClose :: TIFF -> IO ()
+
+-- ==============================================================
+--      high level functions  -- wrappers
+open :: String -> String -> IO TIFF
+open filename mode = withCString filename $ \f -> withCString mode $ \m -> tIFFOpen f m
+-- ==============================================================
+
+
+type Tag = CInt
+
+-- 	TIFFTAG_IMAGEWIDTH              1      uint32            
+tIFFTAG_IMAGEWIDTH :: TIFF -> CUInt -> IO ()
+-- curry
+tIFFTAG_IMAGEWIDTH image value = setUint32 image 256 value
+
+foreign import ccall unsafe "TIFFSetField" setUint32 :: TIFF -> Tag -> CUInt -> IO ()
+foreign import ccall unsafe "TIFFSetField" setUint16 :: TIFF -> Tag -> CUShort -> IO ()
+foreign import ccall unsafe "TIFFSetField" setFloat :: TIFF -> Tag -> CFloat -> IO ()
+--foreign import ccall unsafe "TIFFSetField" setUint32 :: TIFF -> Tag -> CUInt -> IO ()
+
+type TagF a = TIFF -> a -> IO ()
+
+setField :: TIFF -> (TagF a) -> a -> IO ()
+setField image f value = f image value
+
+-- ================
+
+-- setFields ??  
+
+-- ===== tags =====
+
+tIFFTAG_IMAGELENGTH :: TIFF -> CUInt -> IO ()
+tIFFTAG_IMAGELENGTH i v = setUint32 i 257 v
+
+tIFFTAG_BITSPERSAMPLE :: TIFF -> CUShort -> IO ()
+tIFFTAG_BITSPERSAMPLE i v = setUint16 i 258 v
+
+tIFFTAG_SAMPLESPERPIXEL :: TIFF -> CUShort -> IO ()
+tIFFTAG_SAMPLESPERPIXEL i v = setUint16 i 277 v
+
+tIFFTAG_ROWSPERSTRIP :: TIFF -> CUInt -> IO ()
+tIFFTAG_ROWSPERSTRIP i v = setUint32 i 278 v
+
+
+
+tIFFTAG_COMPRESSION :: TIFF -> CUShort -> IO ()
+tIFFTAG_COMPRESSION i v = setUint16 i 259 v
+cOMPRESSION_CCITTFAX4 :: CUShort
+cOMPRESSION_CCITTFAX4 = 4
+
+tIFFTAG_PHOTOMETRIC :: TIFF -> CUShort -> IO ()
+tIFFTAG_PHOTOMETRIC i v = setUint16 i 262 v
+pHOTOMETRIC_MINISWHITE :: CUShort
+pHOTOMETRIC_MINISWHITE = 0
+
+tIFFTAG_FILLORDER :: TIFF -> CUShort -> IO ()
+tIFFTAG_FILLORDER i v = setUint16 i 266 v
+fILLORDER_MSB2LSB :: CUShort
+fILLORDER_MSB2LSB = 1
+
+tIFFTAG_PLANARCONFIG :: TIFF -> CUShort -> IO ()
+tIFFTAG_PLANARCONFIG i v = setUint16 i 284 v
+pLANARCONFIG_CONFIG :: CUShort
+pLANARCONFIG_CONFIG = 1
+
+tIFFTAG_XRESOLUTION :: TIFF -> CFloat -> IO ()
+tIFFTAG_XRESOLUTION i v = setFloat i 282 v
+
+tIFFTAG_YRESOLUTION :: TIFF -> CFloat -> IO ()
+tIFFTAG_YRESOLUTION i v = setFloat i 283 v
+
+tIFFTAG_RESOLUTIONUNIT :: TIFF -> CUShort -> IO ()
+tIFFTAG_RESOLUTIONUNIT i v = setUint16 i 296 v
+rESUNIT_INCH :: CUShort
+rESUNIT_INCH = 2
+
