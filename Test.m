@@ -1,44 +1,65 @@
-function [X,Y1,Y2,Z] = Test()
+function Test()
 
-A = 1:100;
-B = 1:300;
+theta = 0:0.01:50*pi;
 
-X = mapping();
-Y1 = forloopMeshCell();
-Y1 = forloopCell();
-Y2 = forloopArray();
-Z = multidim();
+xArrayFun = Mapping(theta);
+xForLoopArray = ForloopArray(theta);
+xForLoopCell = ForloopCell(theta);
+xPreMultiply = PreMultiplied(theta);
+xForAll = ForAll(theta);
+xTest = test(theta);
+end
 
-    function f = fun(a,b)
-        f = [cos(b) .* sin(a), sin(b) .* sin(a), cos(a)];
-    end
-    function X = mapping()
-        [aMesh,bMesh] = meshgrid(A,B);
-        X = arrayfun(@fun, aMesh, bMesh,'uniformoutput', false);
-    end
-    function Y2 = forloopArray()
-        Y2 = zeros(3,length(B),length(A));
-        for k = B
-            for l = A
-                Y2(:,k,l) = fun(l,k);
-            end
-        end
-    end
-    function Y1 = forloopCell()
-        Y1 = cell(length(B),length(A));
-        for k = B
-            for l = A
-                Y1{k,l} = fun(l,k);
-            end
-        end
-    end
-    function Z = multidim()
-        Z1 = cos(B)' * sin(A);
-        Z2 = sin(B)' * sin(A);
-        Z3 = ones(length(B),1) * cos(A);
-        Z = zeros(3,length(B),length(A));
-        Z(1,:,:) = Z1;
-        Z(2,:,:) = Z2;
-        Z(3,:,:) = Z3;
-    end
+function f = fun(theta)
+M = [cos(theta) sin(theta); -sin(theta) cos(theta)];
+N = [theta.^2 -1; 5*theta 0];
+f = M * N;
+end
+
+function f = Mapping(theta)
+f = arrayfun(@fun, theta,'uniformoutput', false);
+end
+
+function f = ForloopArray(theta)
+L = length(theta);
+f = zeros(2,2,L);
+for k = 1:L
+    f(:,:,k) = fun(theta(k));
+end
+end
+
+function f = ForloopCell(theta)
+L = length(theta);
+f = cell(1,L);
+for k = 1:L
+    f{k} = fun(theta(k));
+end
+end
+
+function f = PreMultiplied(theta)
+L = length(theta);
+f = zeros(2,2,L);
+f11 = cos(theta) .* theta.^2 + sin(theta) .* theta * 5;
+f12 = - cos(theta);
+f21 = - sin(theta) .* theta.^2 + cos(theta) .* theta * 5;
+f22 = sin(theta);
+f(1,1,:) = f11;
+f(1,2,:) = f12;
+f(2,1,:) = f21;
+f(2,2,:) = f22;
+end
+
+function f = ForAll(theta)
+L = length(theta);
+f = zeros(2,2,L);
+for k = 1:L
+    f11 = cos(theta(k)) .* theta(k).^2 + sin(theta(k)) .* theta(k) * 5;
+    f12 = - cos(theta(k));
+    f21 = - sin(theta(k)) .* theta(k).^2 + cos(theta(k)) .* theta(k) * 5;
+    f22 = sin(theta(k));
+    f(1,1,k) = f11;
+    f(1,2,k) = f12;
+    f(2,1,k) = f21;
+    f(2,2,k) = f22;
+end
 end

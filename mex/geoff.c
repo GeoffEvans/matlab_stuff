@@ -1,5 +1,5 @@
 /*=================================================================
- *    test - cosine
+ *    Function that does interesting stuff.
  *
  * The calling syntax is:
  *
@@ -24,40 +24,29 @@
 #endif
 
 /* Input Arguments */
-
 #define    X_IN    prhs[0]
-
-#if !defined(MAX)
-#define    MAX(A, B)    ((A) > (B) ? (A) : (B))
-#endif
-
-#if !defined(MIN)
-#define    MIN(A, B)    ((A) < (B) ? (A) : (B))
-#endif
-/* Output Arguments */
-
-#define    Y_OUT    plhs[0]
-
 
 
 //CHANGE HERE!!!!
 //this function calculates the derivatives
-static void my_cosine(double X[], double Y[], unsigned int size)
+static void my_cosine(double X[], double Y[], unsigned int m, unsigned int n)
 {
-    for(unsigned int i=0; i < size; i++){
-	Y[i] = cos(X[i]);
+    unsigned int i, j;
+    
+    for(j = 0; j < n; j++){
+        for(i = 0; i < m; i++){
+            Y[m*i + j] = cos(X[m*i + j]);
+        }
     }    
     return;
 }
 
 //you have to check i/o sizes below, see err msgs
 //main entry point
-void mexFunction(int nlhs, mxArray *plhs[],
-int nrhs, const mxArray*prhs[] )
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
 {
-    double *dy;
-    double *t,*y;
+    double *x,*y;
     mwSize m,n;
    
     /* Check for proper number of arguments */
@@ -72,14 +61,14 @@ int nrhs, const mxArray*prhs[] )
     n = mxGetN(X_IN);
    
     /* Create a matrix for the return argument */
-    Y_OUT = mxCreateDoubleMatrix(1, MAX(m,n), mxREAL);
+    plhs[0] = mxCreateDoubleMatrix(m,n, mxREAL);
    
     /* Assign pointers to the various parameters */
-    y = mxGetPr(Y_OUT);
+    y = mxGetPr(plhs[0]);
     x = mxGetPr(X_IN);
    
     /* Do the actual computations in a subroutine */
-    my_cosine(x,y,MAX(m,n));
+    //my_cosine(x, y, m, n);
 
     return;
    
