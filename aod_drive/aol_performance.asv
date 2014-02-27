@@ -6,8 +6,8 @@ numOfAods = size(theta,2);
 [wavelengthVac, acPower, iPolAir, V] = AolConstants(); %TODO instantiate AODs with desired properties...
 [aodAcDirectionVectors, zPlanesAod, linearChirps] = AolDrive(numOfAods);
 
-[ ~,xOut,yOut ] = aol_performance_centred( 0, 0, 0, zeros(1,numOfAods), zeros(1,numOfAods), zeros(1,numOfAods), zeros(1,numOfAods), false ); % tracer ray to find AOD centres
-[ prodEffOpt,~,~ ] = aol_performance_centred( microSecs, xMils, yMils, theta, phi, xOut(2:1+numOfAods), yOut(2:1+numOfAods), findFocusAndPlotRays ); % do all rays
+[ ~,aodCentreX,aodCentreY ] = aol_performance_centred( 0, 0, 0, zeros(1,numOfAods), zeros(1,numOfAods), zeros(1,numOfAods), zeros(1,numOfAods), false ); % tracer ray to find AOD centres
+[ prodEffOpt,~,~ ] = aol_performance_centred( microSecs, xMils, yMils, theta, phi, aodCentreX, aodCentreY, findFocusAndPlotRays ); % do all rays
 
     function [wavelengthVac, acPower, iPolAir, V] = AolConstants()
         acPower = 1; % Watts
@@ -159,12 +159,9 @@ numOfAods = size(theta,2);
         end
         
         function PropagateToAod(aodNumber,k,theta,phi)
-            % use the fact that the vector from a point to anywhere on a
-            % plane dotted with the normal equals the distance to the plane
-            % from the point
             unitNormalToAod = GetUnitNormalToAod(aodNumber,theta,phi);
-            vectorToCentreAod = repmat([aodCentreX(aodNumber); aodCentreY(aodNumber); zPlanesAod(aodNumber)],1,numOfRays) - [x(aodNumber,:); y(aodNumber,:); z(aodNumber,:)];
-            x(aodNumber+1,:) = x(aodNumber,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(1,:); 
+            vectorToCentreAod = [aodCentreX(aodNumber), aodCentreY(aodNumber), zPlanesAod(aodNumber)] - [x(aodNumber,:); y(aodNumber,:); z(aodNumber,:)];
+            x(aodNumber+1,:) = x(aodNumber,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(1,:); % use the fact that 
             y(aodNumber+1,:) = y(aodNumber,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(2,:);
             z(aodNumber+1,:) = z(aodNumber,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(3,:);
             

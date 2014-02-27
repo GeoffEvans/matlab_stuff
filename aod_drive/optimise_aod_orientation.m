@@ -1,8 +1,8 @@
 function [ opt ] = optimise_aod_orientation()
 
 microSecs = -4:1:4;
-xMilsArr = 0;%-5:1:5;
-yMilsArr = 0;%-15:5:5;
+xMilsArr = -5:1:5;
+yMilsArr = -15:5:5;
 [xMils, yMils] = meshgrid(xMilsArr, yMilsArr);
 xMils = xMils(:)';
 yMils = yMils(:)';
