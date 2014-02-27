@@ -11,12 +11,11 @@ transverseEigenVals = FindTransversePermittivityEigenvals();
     function transverseEigenVals = FindTransversePermittivityEigenvals()
         % The coordinates of the crystal properties are the natural coords of the crystal.
         % Rotate the YZ-axes of this coord system so that the new Z-axis orientation is given by incident optic wave.
-        rotationsForThetas = arrayfun(@YzRotationMatrix, thetaRange, 'UniformOutput', false);
-        transverseImpermeability = cellfun(@TransformImpermeability, rotationsForThetas, 'UniformOutput', false);
-        
-        % (1.59) diagonalise XY components of transverseImpermeability (not eigenvalues of n).
-        FindEigVals = @(transImperm) diag(transImperm(1:2,1:2));
-        transverseEigenVals = cellfun(FindEigVals, transverseImpermeability, 'UniformOutput', false);
+        % This assumes the phi is pi/2. 
+        transverseEigenVals = cell(1,length(thetaRange));
+        for q = 1:length(thetaRange)
+            transverseEigenVals{q} = RefIndEigenvals(thetaRange(q));
+        end
     end
     function [nOrd, nExt] = FindN()
         % Use equation (1.62) Xu & Stroud to find values for n for this new coord system.        
@@ -37,13 +36,11 @@ transverseEigenVals = FindTransversePermittivityEigenvals();
             dydx = 1i./(gamma) .* (transverseEigVals(1) - (n)^-2);
         end
     end
-
-    function t = TransformImpermeability(rotation)
-        t = rotation * teo2.RelativeImpermeability() * (rotation');
-    end
 end
 
-function yzRotationMat = YzRotationMatrix(theta)
-yzRotationMat = [1 0 0; 0, cos(theta), -sin(theta); 0, sin(theta), cos(theta)];
+function transverseEigenVals = RefIndEigenvals(theta)
+    yzRotationMat = [1 0 0; 0, cos(theta), -sin(theta); 0, sin(theta), cos(theta)];
+    transverseImpermeability = yzRotationMat * teo2.RelativeImpermeability() * (yzRotationMat'); % (1.59) diagonalise XY components of transverseImpermeability (not eigenvalues of n).
+    transverseEigenVals = diag(transverseImpermeability(1:2,1:2));
 end
 

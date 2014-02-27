@@ -24,10 +24,12 @@ PlotSurfaceEllipsoids();
 
     function PlotApproximateEllipsoids()
         delta = n_ord(1).^2 * teo2.activityVector / 2; %(1.83 Xu & St)
-        ordNumerator = ( cos(thetaRadians)/((1 - delta)*n_ord(1)) ).^2 + ( sin(thetaRadians)/n_ord(1) ).^2;
+        ordNumerator = ( cos(thetaRadians)/((1 - delta)*n_ord(1)) ).^2 + ( sin(thetaRadians)/n_ord(1) ).^2; %(1.80)
         extNumerator = ( cos(thetaRadians)/((1 + delta)*n_ord(1)) ).^2 + ( sin(thetaRadians)/n_ext(1) ).^2;
-        nOrdApprox = ordNumerator .^ -0.5;
-        nExtApprox = extNumerator .^ -0.5;
+        nOrdApprox = (1 - delta)*n_ord(1) - 2*1.96e-5*(180/pi)^2*(cos(thetaRadians)-1) ;    % quadratic approximation for efficiency model
+        nExtApprox = (1 + delta)*n_ord(1) - 2*2.24e-5*(180/pi)^2*(cos(thetaRadians)-1) ;    % quadratic approximation for efficiency model
+        %nOrdApprox = ordNumerator .^ -0.5;
+        %nExtApprox = extNumerator .^ -0.5;
         plot(thetaDegrees,nOrdApprox, 'color', 'green');
         plot(thetaDegrees,nExtApprox, 'color', 'magenta');
     end
