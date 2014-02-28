@@ -1,14 +1,14 @@
 function [ opt ] = optimise_aod_orientation()
 
 microSecs = -4:4:4;
-xMilsArr = -5:5:5;
-yMilsArr = -5:5:5;
+xMilsArr = -10:10:10;
+yMilsArr = -10:10:10;
 [xMils, yMils] = meshgrid(xMilsArr, yMilsArr);
 xMils = xMils(:)';
 yMils = yMils(:)';
 xDeflectMils = xMils;
 yDeflectMils = yMils;
-pairDeflectionRatio = [0 2];
+pairDeflectionRatio = 2;
 opt = Brute();
 
 
@@ -28,7 +28,7 @@ opt = Brute();
         sets = [theta,phi];
         
         [theta,phi] = GetAnglePermutations(numberOfAods, sets);
-        [ prodEffOpt ] =  aol_performance( microSecs, xMils,yMils, theta, phi, xDeflectMils, yDeflectMils, pairDeflectionRatio, true, 1 );
+        [ prodEffOpt ] =  aol_performance( microSecs, xMils,yMils, theta, phi, xDeflectMils, yDeflectMils, pairDeflectionRatio, 30e6, true, 1 );
         opt = prodEffOpt;
         toc
         function [theta,phi] = GetAnglePermutations(numberOfAods,sets)
