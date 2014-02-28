@@ -1,19 +1,23 @@
 function [ opt ] = optimise_aod_orientation()
 
-microSecs = -4:1:4;
-xMilsArr = -5:1:5;
-yMilsArr = -15:5:5;
+microSecs = -4:4:4;
+xMilsArr = -5:5:5;
+yMilsArr = -5:5:5;
 [xMils, yMils] = meshgrid(xMilsArr, yMilsArr);
 xMils = xMils(:)';
 yMils = yMils(:)';
+xDeflectMils = xMils;
+yDeflectMils = yMils;
+pairDeflectionRatio = [0 2];
 opt = Brute();
+
 
     function [opt] = Brute()  
         tic
         numberOfAods = 4;
         theta = cell(1,numberOfAods);
         phi = cell(1,numberOfAods);
-        theta{1} = 2.2 / 180 * pi;
+        theta{1} = 2.1990 / 180 * pi;
         phi{1} = 270 / 180 * pi;
         theta{2} = 0 / 180 * pi;
         phi{2} = 90 / 180 * pi;
@@ -24,7 +28,7 @@ opt = Brute();
         sets = [theta,phi];
         
         [theta,phi] = GetAnglePermutations(numberOfAods, sets);
-        [ prodEffOpt ] =  aol_performance( microSecs,xMils,yMils, theta, phi, true );
+        [ prodEffOpt ] =  aol_performance( microSecs, xMils,yMils, theta, phi, xDeflectMils, yDeflectMils, pairDeflectionRatio, true, 1 );
         opt = prodEffOpt;
         toc
         function [theta,phi] = GetAnglePermutations(numberOfAods,sets)
@@ -40,24 +44,47 @@ opt = Brute();
         end
     end
 
-    function [opt] = Aod2Opt()
+    function [opt] = Aod2()
         tic
-        MinFun = @(v) -aol_performance(microSecs,xMils,yMils, v(1:2), v(3:4), false);
-        v = [2, 2, 270, 180] / 180 * pi;
-        angles = fminsearch(MinFun,v);
-        optEff = aol_performance(microSecs,xMils,yMils, angles(1:2), angles(3:4), true);
-        opt = [optEff angles*180/pi];
+        MinFun = @(v) -aol_performance(microSecs,xMils,yMils, [2.1990/180*pi, v(1)], [270/180*pi, v(2)], false, 2);
+        v = [0, 90] / 180 * pi;
+        v = fminsearch(MinFun,v);
+        optEff = aol_performance(microSecs,xMils,yMils, [2.1990/180*pi, v(1)], [270/180*pi, v(1)], true, 2);
+        opt = [optEff v*180/pi];
         toc
     end
+    function [opt] = Opt2()
+        t = [2.1990, 0.0446] / 180 * pi; 
+        p = [270, 89.9881] / 180 * pi;  
+        opt = aol_performance(microSecs,xMils,yMils, t, p, false, 2);
+    end
 
-    function [opt] = Aod4Opt()
-        tic
-        MinFun = @(v) -aol_performance(microSecs,xMils,yMils, v(1:4), v(5:8), false);
-        v = [2.2,2.3,0,0,270,190,90,0] / 180 * pi;
-        options = optimset('MaxFunEvals', 2000);
-        angles = fminsearch(MinFun,v,options);
-        optEff = aol_performance(microSecs,xMils,yMils, angles(1:4), angles(5:8), true);
-        opt = [optEff angles*180/pi];
-        toc
+
+    function [opt] = Opt4()
+        t = [0.0407    0.0407   0.0028   0.0302];
+        p = [4.7124     3.1482    5.9256 - pi    pi + 3.1074];
+        for n = 1:4
+            opt = Aod4(n, t, p);
+            t(n) = opt(1);
+            p(n) = opt(2);
+        end        
+        opt = aol_performance(microSecs,xMils,yMils, t, p, true, 1);
+        opt = [opt t p];
+        
+        function [opt] = Aod4(n,t,p)
+            tic
+            v = [t(n) p(n)];
+            opt = fminsearch(@MinFun,v);
+            toc
+            
+            function val = MinFun(v) 
+                t(n) = v(1);
+                p(n) = v(2);
+                val = -aol_performance(microSecs,xMils,yMils, t, p, false, n);
+            end
+            %  0.8859    0.0407    0.0408   -0.0087   -0.0292    4.7124     3.1482    5.9256    3.1074
+            %  0.8859    0.0407    0.0407   -0.0028   -0.0302    4.7124     3.1482    4.7124    3.1063      
+            %  0.8859    0.0407    0.0396    0.0101    0.0133    4.7124     3.3055    2.8308    2.3055
+        end
     end
 end
