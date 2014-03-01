@@ -9,15 +9,6 @@ end
 [numOfAods, aodAcDirectionVectors, zPlanesAod, linearChirps, constFreq, aodCentre] = AolDrive(theta, xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq); % TODO model the propagation through AOD thickness - adjust drive accordingly
 [ prodEffOpt ] = AolPerformance( microSecs, xMils, yMils, theta, phi, findFocusAndPlotRays, numToOptimise );
 
-
-% NOTE FOR MONDAY: this is broken because you tried to add in the different
-% deflections. In doing so you removed the trace rays to determine the
-% centre and now you are trying to find the centre by using a small angle
-% approx. You need to get it plotting something that goes to a focus and
-% then once you've done that check that a trace ray roughly matches up with
-% the calculated centres. The number of arguments is getting to big so
-% condense [xMils; yMils] and [xDefMil;yDefMil] to get from 11 to 9.
-
     function [wavelengthVac, acPower, iPolAir, V] = AolConstants()
         acPower = 1; % Watts
         iPolAir = [1; 1i]/sqrt(2);
@@ -39,11 +30,11 @@ end
         chirp = V*V/wavelengthVac * chirpFactor;
         zPlanesAod = 1 + [0, cumsum(aodL)];
         
-        aodCentre = zeros(2,numOfAods);
-        for n = 2:numOfAods % calc centre of AODs using small angle approx.
+        aodCentre = zeros(2,numOfAods+1);% calc centre of AODs and the focal point using small angle approx. 
+        for n = 2:numOfAods+1 % start from 2 because offset on first AOD is zero
             accumulator = 0;
-            for m = 1:n
-                offsetDueToMthAod = sum(aodL(m:(n-1))).*aodDirectionVectors{m}.*constFreq(m);
+            for mAod = 1:n-1 
+                offsetDueToMthAod = sum(aodL(mAod:(n-1))).*aodDirectionVectors{mAod}.*constFreq(mAod,1); % TODO adjust this to take const freq corresponding to zero deflection
                 accumulator = accumulator + offsetDueToMthAod;
             end
             aodCentre(:,n) = wavelengthVac/V * accumulator;
@@ -52,7 +43,7 @@ end
         function [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflectMils, yDeflectMils, pairDeflectionRatio, optCentreFreq)
             %aodDirectionVectors = {[0;1], [1;0], -[0;1], -[1;0]};
             aodDirectionVectors = {[1;0], [0;1], -[1;0], -[0;1]};
-            aodL = [5e-2, 5e-2, 5e-2, 5e0];
+            aodL = [5e-1, 5e-1, 5e-1, 5e0];
             l1 = aodL(1);
             l2 = aodL(2);
             l3 = aodL(3);
@@ -61,9 +52,13 @@ end
                 1/(l2 + l3 + 2*l4)...
                 1/(2*(l3 + l4))...
                 1/(2*l4)];      
-            f3diff = - V/wavelengthVac * xDeflectMils ./ (pairDeflectionRatio * sum(aodL) + sum(aodL(3:4)));
-            f4diff = - V/wavelengthVac * yDeflectMils ./ (pairDeflectionRatio * sum(aodL(2:4)) + aodL(4));
-            constFreq = [ sum(aodL(3:4))/sum(aodL)*optCentreFreq - pairDeflectionRatio*f3diff; aodL(4)/sum(aodL(2:4))*optCentreFreq - pairDeflectionRatio*f4diff; optCentreFreq+f3diff; optCentreFreq+f4diff];
+            f3diff = - V/wavelengthVac * xDeflectMils * 1e-3 ./ (pairDeflectionRatio * sum(aodL) + sum(aodL(3:4)));
+            f4diff = - V/wavelengthVac * yDeflectMils * 1e-3 ./ (pairDeflectionRatio * sum(aodL(2:4)) + aodL(4));
+            constFreq = [ sum(aodL(3:4))/sum(aodL)*optCentreFreq - pairDeflectionRatio*f3diff;...
+                            aodL(4)/sum(aodL(2:4))*optCentreFreq - pairDeflectionRatio*f4diff;...
+                            optCentreFreq+f3diff;...
+                            optCentreFreq+f4diff];
+            % constFreq = constFreq * 0 + 30e6;
         end
         function [aodDirectionVectors, aodL, chirpFactor] = Aod2()
             aodDirectionVectors = {[1;0], -[1;0]};
@@ -84,7 +79,7 @@ end
         fractionalAngleErrorMax = 0;
         [numOfTimes, numOfPositions, numOfDeflections, numOfPerturbations, numOfRays, numOfRaysPerTime, numOfRaysPerPerturbation] = UsefulNumbers(microSecs, xMils, theta, constFreq);
         [t,x,y,z,eff,k] = InitialiseRayVars(microSecs,xMils,yMils);
-        PropagateThroughAods(k, theta, phi);
+        k = PropagateThroughAods(k, theta, phi);
         zFocusModel = PropagateAfterAods(k,findFocusAndPlotRays);
         PlotRays(findFocusAndPlotRays,zFocusModel);
         [ prodEffOpt ] = AnalysePerformance(eff, numToOptimise, x(end-1,:), y(end-1,:), theta, phi);
@@ -104,7 +99,7 @@ end
             phiOpt = phi(optIndices,:) * 180/pi;
         end
         
-        function PropagateThroughAods(k, theta, phi)
+        function k = PropagateThroughAods(k, theta, phi)
             for a=1:numOfAods
                 PropagateToAod(a, k, theta, phi);
                 [k, eff(a,:)] = DeflectAtAod(a, k, theta, phi);
@@ -126,8 +121,8 @@ end
             
             function [kOut, eff] = DeflectAtAod(nthAod, kIn, theta, phi)
                 Kn = aodAcDirectionVectors{nthAod};
-                xFromCentre = x(nthAod,:) - aodCentre(1,nthAod);
-                yFromCentre = y(nthAod,:) - aodCentre(2,nthAod);
+                xFromCentre = x(nthAod+1,:) - aodCentre(1,nthAod);
+                yFromCentre = y(nthAod+1,:) - aodCentre(2,nthAod);
                 phase = StretchTimeArray(t) - ( xFromCentre*Kn(1) + yFromCentre*Kn(2) ) / V;
                 localFreq = StretchBaseFrequencies(constFreq(nthAod,:)) + linearChirps(nthAod) * phase;
                 
@@ -137,7 +132,7 @@ end
                 
                 modelAngle = acos( dot(kOut,kIn) ./ (mag(kOut).*mag(kIn)) );
                 isotropicAngle = wavelengthVac * localFreq / V;
-                fractionalAngleError = abs(isotropicAngle./modelAngle - 1);
+                fractionalAngleError = abs((isotropicAngle - modelAngle)./modelAngle);
                 fractionalAngleErrorMax = fractionalAngleErrorMax + (fractionalAngleError > fractionalAngleErrorMax) .* (fractionalAngleError - fractionalAngleErrorMax);     
             end
             
@@ -197,9 +192,11 @@ end
                 end
                 function val = MinFunc(zVal)
                     [xTemp, yTemp, ~] = PropagateToNormalPlaneAfterLastAod(kLocal,zVal);
-                    sigmaX = std(xTemp,1);
-                    sigmaY = std(yTemp,1);
-                    val = sigmaX .* sigmaY;
+                    xDeflectionCol = reshape(permute(reshape(xTemp,numOfTimes*numOfPositions,numOfDeflections,numOfPerturbations),[1 3 2]),numOfTimes*numOfPositions*numOfPerturbations,numOfDeflections);
+                    yDeflectionCol = reshape(permute(reshape(yTemp,numOfTimes*numOfPositions,numOfDeflections,numOfPerturbations),[1 3 2]),numOfTimes*numOfPositions*numOfPerturbations,numOfDeflections);
+                    sigmaX = std(xDeflectionCol,1);
+                    sigmaY = std(yDeflectionCol,1);
+                    val = prod(sigmaX) .* prod(sigmaY);
                 end
             end
             
@@ -245,14 +242,11 @@ end
                 vOut(:,raysForMthPerm) = matrixFromAnglesFunc(n,thetaAod,phiAod) * vIn(:,raysForMthPerm);
             end
         end
-        
-        
-        
-        
+           
         function [numOfTimes, numOfPositions, numOfDeflections, numOfPerturbations, numOfRays, numOfRaysPerTime, numOfRaysPerPerturbation] = UsefulNumbers(microSecs, xMils, theta, baseFreq)
             numOfTimes = length(microSecs);
             numOfPositions = length(xMils);
-            numOfDeflections = length(baseFreq);
+            numOfDeflections = size(baseFreq,2);
             numOfPerturbations = size(theta,1);
             numOfRays = numOfPerturbations * numOfDeflections * numOfPositions * numOfTimes;
             numOfRaysPerTime = numOfRays / numOfTimes;

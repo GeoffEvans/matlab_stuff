@@ -1,30 +1,32 @@
 function [ opt ] = optimise_aod_orientation()
 
 microSecs = -4:4:4;
-xMilsArr = -10:10:10;
-yMilsArr = -10:10:10;
+xMilsArr = -20:20:20;
+yMilsArr = xMilsArr;
 [xMils, yMils] = meshgrid(xMilsArr, yMilsArr);
 xMils = xMils(:)';
 yMils = yMils(:)';
-xDeflectMils = xMils;
-yDeflectMils = yMils;
+xDeflectMils = -40:20:20;
+yDeflectMils = xDeflectMils*2;
+[xDeflectMils, yDeflectMils] = meshgrid(xDeflectMils, yDeflectMils);
+xDeflectMils = xDeflectMils(:)';
+yDeflectMils = yDeflectMils(:)';
 pairDeflectionRatio = 2;
 opt = Brute();
-
 
     function [opt] = Brute()  
         tic
         numberOfAods = 4;
         theta = cell(1,numberOfAods);
         phi = cell(1,numberOfAods);
-        theta{1} = 2.1990 / 180 * pi;
+        theta{1} = 0 / 180 * pi;
         phi{1} = 270 / 180 * pi;
         theta{2} = 0 / 180 * pi;
         phi{2} = 90 / 180 * pi;
-        theta{3} = 1.2 / 180 * pi;
+        theta{3} = 0 / 180 * pi;
         phi{3} = 270 / 180 * pi;
         theta{4} = 0 / 180 * pi;
-        phi{4} = [90 270] / 180 * pi;
+        phi{4} = 90 / 180 * pi;
         sets = [theta,phi];
         
         [theta,phi] = GetAnglePermutations(numberOfAods, sets);
