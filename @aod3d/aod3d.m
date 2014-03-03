@@ -8,8 +8,8 @@ classdef aod3d
     methods (Static)        % Externally defined
         [ dTheta, dPhi, phaseOffset ] =         match_phase( iTheta, iPhi, acFreq, acTheta )
         [eff, dTheta, dPhi] =                   rescattered_efficiency( iTheta, iPhi, acFreq, acTheta, acPower )
-        [dThetaAir,dPhi,dInten,dPol] =          aod_propagator( iThetaAir, iPhi, iInten, iPolAir, acFreq, acTheta, acPower )
-        [ dWavevectorAir, dInten, dPol ] =      aod_propagator_vector( iWavevectorAir, iInten, iPolAir, acFreq, acPower )
+        [dispVec,dThetaAir,dPhi,dInten,dPol] =  aod_propagator( iThetaAir, iPhi, iInten, iPolAir, acFreq, acTheta, acPower )
+        [dispVec,dWavevectorAir,dInten,dPol ] = aod_propagator_vector( iWavevectorAir, iInten, iPolAir, acFreq, acPower )
                                                 plot_efficiency_surface()
                                                 plot_phase_surface()
                                                 plot_diffraction_angles_surface()

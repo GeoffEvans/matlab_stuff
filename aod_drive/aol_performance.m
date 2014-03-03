@@ -43,11 +43,12 @@ end
         function [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflectMils, yDeflectMils, pairDeflectionRatio, optCentreFreq)
             %aodDirectionVectors = {[0;1], [1;0], -[0;1], -[1;0]};
             aodDirectionVectors = {[1;0], [0;1], -[1;0], -[0;1]};
-            aodL = [5e-1, 5e-1, 5e-1, 5e0];
-            l1 = aodL(1);
-            l2 = aodL(2);
-            l3 = aodL(3);
-            l4 = aodL(4);
+            aodL = [5e-2, 5e-2, 5e-2, 5e0];
+            correctionDistance = aod3d.L / 2.26;
+            l1 = aodL(1) - correctionDistance;
+            l2 = aodL(2) - correctionDistance;
+            l3 = aodL(3) - correctionDistance;
+            l4 = aodL(4) - correctionDistance;
             chirpFactor = [ 1/(l1 + l2 + 2*l3 + 2*l4)...
                 1/(l2 + l3 + 2*l4)...
                 1/(2*(l3 + l4))...
@@ -100,18 +101,23 @@ end
         end
         
         function k = PropagateThroughAods(k, theta, phi)
+            displacementInPrevAod = zeros(3,numOfRays); % for holding the displacement due to propagation inside the AOD
             for a=1:numOfAods
-                PropagateToAod(a, k, theta, phi);
-                [k, eff(a,:)] = DeflectAtAod(a, k, theta, phi);
+                PropagateToAod(a, k, theta, phi, displacementInPrevAod);
+                [k, eff(a,:), displacementInPrevAod] = DeflectAtAod(a, k, theta, phi);
             end
             
-            function PropagateToAod(aodNumber,k,theta,phi)
+            function PropagateToAod(aodNumber,k,theta,phi,displacementInPrevAod)
+                xEndAod = x(aodNumber,:) + displacementInPrevAod(1,:);
+                yEndAod = y(aodNumber,:) + displacementInPrevAod(2,:);
+                zEndAod = z(aodNumber,:) + displacementInPrevAod(3,:);
+                
                 % the vector from a point to anywhere on a plane dotted with the normal equals the distance to the plane from the point
                 unitNormalToAod = GetUnitNormalToAod(aodNumber,theta,phi);
-                vectorToCentreAod = StretchColumn([aodCentre(1,aodNumber); aodCentre(2,aodNumber); zPlanesAod(aodNumber)]) - [x(aodNumber,:); y(aodNumber,:); z(aodNumber,:)];
-                x(aodNumber+1,:) = x(aodNumber,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(1,:);
-                y(aodNumber+1,:) = y(aodNumber,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(2,:);
-                z(aodNumber+1,:) = z(aodNumber,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(3,:);
+                vectorToCentreAod = StretchColumn([aodCentre(1,aodNumber); aodCentre(2,aodNumber); zPlanesAod(aodNumber)]) - [xEndAod; yEndAod; zEndAod];
+                x(aodNumber+1,:) = xEndAod + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(1,:);
+                y(aodNumber+1,:) = yEndAod + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(2,:);
+                z(aodNumber+1,:) = zEndAod + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(3,:);
                 
                 function normalUnitInLabFrame = GetUnitNormalToAod(aodNumber,theta,phi)
                     normalUnitInAodFrame = repmat([0; 0; 1],1,numOfRays);
@@ -119,7 +125,7 @@ end
                 end
             end
             
-            function [kOut, eff] = DeflectAtAod(nthAod, kIn, theta, phi)
+            function [kOut, eff, dispInLab] = DeflectAtAod(nthAod, kIn, theta, phi)
                 Kn = aodAcDirectionVectors{nthAod};
                 xFromCentre = x(nthAod+1,:) - aodCentre(1,nthAod);
                 yFromCentre = y(nthAod+1,:) - aodCentre(2,nthAod);
@@ -127,8 +133,9 @@ end
                 localFreq = StretchBaseFrequencies(constFreq(nthAod,:)) + linearChirps(nthAod) * phase;
                 
                 kInR = TransformToPerturbedCrystalFrame(kIn,nthAod,theta,phi);
-                [ kOutR, eff, ~ ] = aod3d.aod_propagator_vector( kInR, ones(1,numOfRays), StretchColumn(iPolAir), localFreq, StretchColumn(acPower) );
+                [ dispInCrystal, kOutR, eff, ~ ] = aod3d.aod_propagator_vector( kInR, ones(1,numOfRays), StretchColumn(iPolAir), localFreq, StretchColumn(acPower) );
                 kOut = TransformOutOfAdjustedCrystalFrame(kOutR,nthAod,theta,phi);
+                dispInLab = TransformOutOfAdjustedCrystalFrame(dispInCrystal,nthAod,theta,phi);
                 
                 modelAngle = acos( dot(kOut,kIn) ./ (mag(kOut).*mag(kIn)) );
                 isotropicAngle = wavelengthVac * localFreq / V;

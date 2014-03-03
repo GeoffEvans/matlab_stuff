@@ -14,7 +14,7 @@ iInten = 1;
 iPolAir = [1; 1i]/sqrt(2) * arrayLength;
 acTheta = pi/2 * arrayLength;
 acPower = 1.8;
-[ dThetaAir, dPhi, dInten, dPol ] = aod3d.aod_propagator( iThetaAir, iPhi, iInten, iPolAir, acFreq, acTheta, acPower );
+[ ~,dThetaAir, dPhi, dInten, dPol ] = aod3d.aod_propagator( iThetaAir, iPhi, iInten, iPolAir, acFreq, acTheta, acPower );
 toc
 
 figure();
