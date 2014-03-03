@@ -1,4 +1,4 @@
-function [ prodEffOpt ] = aol_performance( microSecs, xMils, yMils, theta, phi, xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq, findFocusAndPlotRays, numToOptimise )
+function [ prodEffOpt, x, y ] = aol_performance( microSecs, xMils, yMils, theta, phi, xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq, findFocusAndPlotRays, numToOptimise )
 
 if size(theta,1) ~= size(phi,1) || size(theta,2) ~= size(phi,2) || length(xMils) ~= length(yMils) ||  length(xDeflectMils) ~= length(yDeflectMils)
     % size(theta) = size(phi) = [number of orientation perturbations, number of AODs]
@@ -86,18 +86,12 @@ end
         [ prodEffOpt ] = AnalysePerformance(eff, numToOptimise, x(end-1,:), y(end-1,:), theta, phi);
         
         function [ prodEffOpt ] = AnalysePerformance(eff, numToOptimise, xFocus, yFocus, theta, phi)
-            prodEffSingleTime = geomean(eff(1:numToOptimise,:),1); % average over all AODs we are interested in
-            prodEffPerturbationAv = harmmean(reshape(prodEffSingleTime,numOfRaysPerPerturbation,numOfPerturbations),1); % average for each perturbation, want low efficiency to have big effect
-            prodEffOpt = max(prodEffPerturbationAv);
-            return % below not currently used but may be useful later / for debugging
-            optIndices = prodEffTimeAv == max(prodEffTimeAv);
-            sigmaX = std(reshape(xFocus,numOfRaysPerPerturbation,numOfPerturbations),1);
-            sigmaY = std(reshape(yFocus,numOfRaysPerPerturbation,numOfPerturbations),1);
-            avX = mean(reshape(xFocus,numOfRaysPerPerturbation,numOfPerturbations));
-            avY = mean(reshape(yFocus,numOfRaysPerPerturbation,numOfPerturbations));
+            prodEffSingleRay = geomean(eff(1:numToOptimise,:),1); % average over all AODs we are interested in
+            prodEffDeflectionMat = reshape(prodEffSingleRay,numOfTimes*numOfPositions,numOfDeflections*numOfPerturbations); 
+            prodEffDeflection = mean(prodEffDeflectionMat,1);
+            prodEffDeflectionAv = harmmean(prodEffDeflection,2); % average for each deflection, want low efficiency to have big effect
+            prodEffOpt = prodEffDeflectionAv;
             maxFracAngleError = max(fractionalAngleErrorMax);
-            thetaOpt = theta(optIndices,:) * 180/pi;
-            phiOpt = phi(optIndices,:) * 180/pi;
         end
         
         function k = PropagateThroughAods(k, theta, phi)

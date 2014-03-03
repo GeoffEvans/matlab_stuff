@@ -1,12 +1,12 @@
 function [ opt ] = optimise_aod_orientation()
 
 microSecs = -4:4:4;
-xMilsArr = -20:20:20;
+xMilsArr = -20:40:20;
 yMilsArr = xMilsArr;
 [xMils, yMils] = meshgrid(xMilsArr, yMilsArr);
 xMils = xMils(:)';
 yMils = yMils(:)';
-xDeflectMils = -40:20:20;
+xDeflectMils = -30:60:30;
 yDeflectMils = xDeflectMils*2;
 [xDeflectMils, yDeflectMils] = meshgrid(xDeflectMils, yDeflectMils);
 xDeflectMils = xDeflectMils(:)';
@@ -61,28 +61,29 @@ opt = Brute();
         opt = aol_performance(microSecs,xMils,yMils, t, p, false, 2);
     end
 
-
     function [opt] = Opt4()
-        t = [0.0407    0.0407   0.0028   0.0302];
-        p = [4.7124     3.1482    5.9256 - pi    pi + 3.1074];
+        t = [0.0385    0   -0.0021    0];
+        p = [4.7124    0    2.8315    0];
         for n = 1:4
             opt = Aod4(n, t, p);
             t(n) = opt(1);
             p(n) = opt(2);
         end        
-        opt = aol_performance(microSecs,xMils,yMils, t, p, true, 1);
+        opt = aol_performance(microSecs,xMils,yMils, t, p, xDeflectMils, yDeflectMils, pairDeflectionRatio, 30e6, true, 4);
         opt = [opt t p];
         
         function [opt] = Aod4(n,t,p)
             tic
             v = [t(n) p(n)];
-            opt = fminsearch(@MinFun,v);
+            lb = [-1 -2*pi];
+            ub = [1 2*pi];
+            opt = simulannealbnd(@MinFun,v,lb,ub);
             toc
             
             function val = MinFun(v) 
                 t(n) = v(1);
                 p(n) = v(2);
-                val = -aol_performance(microSecs,xMils,yMils, t, p, false, n);
+                val = -aol_performance(microSecs,xMils,yMils, t, p, xDeflectMils, yDeflectMils, pairDeflectionRatio, 30e6, false, n );
             end
             %  0.8859    0.0407    0.0408   -0.0087   -0.0292    4.7124     3.1482    5.9256    3.1074
             %  0.8859    0.0407    0.0407   -0.0028   -0.0302    4.7124     3.1482    4.7124    3.1063      
