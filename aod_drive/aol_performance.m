@@ -1,6 +1,6 @@
 function [ prodEffOpt, x, y ] = aol_performance( microSecs, xMils, yMils, theta, phi, xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq, findFocusAndPlotRays, numToOptimise )
 
-if size(theta,1) ~= size(phi,1) || size(theta,2) ~= size(phi,2) || length(xMils) ~= length(yMils) ||  length(xDeflectMils) ~= length(yDeflectMils)
+if size(theta,1) ~= size(phi,1) || size(theta,2) ~= size(phi,2) || length(xMils) ~= length(yMils) ||  size(xDeflectMils,2) ~= size(yDeflectMils,2) ||  size(xDeflectMils,1) ~= 1
     % size(theta) = size(phi) = [number of orientation perturbations, number of AODs]
     error('argument size mismatch');
 end
@@ -10,19 +10,20 @@ end
 [ prodEffOpt ] = AolPerformance( microSecs, xMils, yMils, theta, phi, findFocusAndPlotRays, numToOptimise );
 
     function [wavelengthVac, acPower, iPolAir, V] = AolConstants()
-        acPower = 1; % Watts
+        acPower = 2; % Watts
         iPolAir = [1; 1i]/sqrt(2);
         V = 613;
-        wavelengthVac = 800e-9;
+        wavelengthVac = aod3d.opWavelenVac;
     end
 
     function [numOfAods, aodDirectionVectors, zPlanesAod, chirp, constFreq, aodCentre] = AolDrive(theta, xDeflection, yDeflection, pairDeflectionRatio, optConstFreq)
+        correctionDistance = aod3d.L / 2.26;
         numOfAods = size(theta,2);
         if numOfAods == 4
             [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflection, yDeflection, pairDeflectionRatio, optConstFreq);
         end
         if numOfAods == 2
-            [aodDirectionVectors, aodL, chirpFactor] = Aod2();
+            [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod2(xDeflection, pairDeflectionRatio, optConstFreq);
         end
         if numOfAods == 1
             [aodDirectionVectors, aodL, chirpFactor] = Aod1();
@@ -40,11 +41,11 @@ end
             aodCentre(:,n) = wavelengthVac/V * accumulator;
         end
         
-        function [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflectMils, yDeflectMils, pairDeflectionRatio, optCentreFreq)
+        function [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq)
             %aodDirectionVectors = {[0;1], [1;0], -[0;1], -[1;0]};
             aodDirectionVectors = {[1;0], [0;1], -[1;0], -[0;1]};
             aodL = [5e-2, 5e-2, 5e-2, 5e0];
-            correctionDistance = aod3d.L / 2.26;
+            
             l1 = aodL(1) - correctionDistance;
             l2 = aodL(2) - correctionDistance;
             l3 = aodL(3) - correctionDistance;
@@ -55,18 +56,19 @@ end
                 1/(2*l4)];      
             f3diff = - V/wavelengthVac * xDeflectMils * 1e-3 ./ (pairDeflectionRatio * sum(aodL) + sum(aodL(3:4)));
             f4diff = - V/wavelengthVac * yDeflectMils * 1e-3 ./ (pairDeflectionRatio * sum(aodL(2:4)) + aodL(4));
-            constFreq = [ sum(aodL(3:4))/sum(aodL)*optCentreFreq - pairDeflectionRatio*f3diff;...
-                            aodL(4)/sum(aodL(2:4))*optCentreFreq - pairDeflectionRatio*f4diff;...
-                            optCentreFreq+f3diff;...
-                            optCentreFreq+f4diff];
-            % constFreq = constFreq * 0 + 30e6;
+            constFreq = [ sum(aodL(3:4))/sum(aodL)*optConstFreq - pairDeflectionRatio*f3diff;...
+                            aodL(4)/sum(aodL(2:4))*optConstFreq - pairDeflectionRatio*f4diff;...
+                            optConstFreq+f3diff;...
+                            optConstFreq+f4diff];
         end
-        function [aodDirectionVectors, aodL, chirpFactor] = Aod2()
+        function [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod2(xDeflectMils, pairDeflectionRatio, optConstFreq)
             aodDirectionVectors = {[1;0], -[1;0]};
             aodL = [5e-2, 5];
-            l1 = aodL(1);
-            l2 = aodL(2);
+            l1 = aodL(1) - correctionDistance;
+            l2 = aodL(2) - correctionDistance;
             chirpFactor = [ 1/(l1 + 2*l2), 1/(2*l2) ];
+            fDiff = - V/wavelengthVac * xDeflectMils * 1e-3 ./ (pairDeflectionRatio * sum(aodL) + aodL(2));
+            constFreq = [ aodL(2)/sum(aodL)*optConstFreq - pairDeflectionRatio*fDiff; optConstFreq+fDiff];
         end
         function [aodDirectionVectors, aodL, chirpFactor] = Aod1()
             aodDirectionVectors = {[1;0]};
@@ -85,12 +87,10 @@ end
         PlotRays(findFocusAndPlotRays,zFocusModel);
         [ prodEffOpt ] = AnalysePerformance(eff, numToOptimise, x(end-1,:), y(end-1,:), theta, phi);
         
-        function [ prodEffOpt ] = AnalysePerformance(eff, numToOptimise, xFocus, yFocus, theta, phi)
+        function [ prodEffDeflection ] = AnalysePerformance(eff, numToOptimise, xFocus, yFocus, theta, phi)
             prodEffSingleRay = geomean(eff(1:numToOptimise,:),1); % average over all AODs we are interested in
             prodEffDeflectionMat = reshape(prodEffSingleRay,numOfTimes*numOfPositions,numOfDeflections*numOfPerturbations); 
-            prodEffDeflection = mean(prodEffDeflectionMat,1);
-            prodEffDeflectionAv = harmmean(prodEffDeflection,2); % average for each deflection, want low efficiency to have big effect
-            prodEffOpt = prodEffDeflectionAv;
+            prodEffDeflection = mean(prodEffDeflectionMat,1); % average for each deflection
             maxFracAngleError = max(fractionalAngleErrorMax);
         end
         
@@ -125,7 +125,7 @@ end
                 yFromCentre = y(nthAod+1,:) - aodCentre(2,nthAod);
                 phase = StretchTimeArray(t) - ( xFromCentre*Kn(1) + yFromCentre*Kn(2) ) / V;
                 localFreq = StretchBaseFrequencies(constFreq(nthAod,:)) + linearChirps(nthAod) * phase;
-                
+                [thetaBragg, phiBragg] = CalculateBraggRotationAngles(kIn, aodAcDirectionVectors{nthAod}, localFreq);
                 kInR = TransformToPerturbedCrystalFrame(kIn,nthAod,theta,phi);
                 [ dispInCrystal, kOutR, eff, ~ ] = aod3d.aod_propagator_vector( kInR, ones(1,numOfRays), StretchColumn(iPolAir), localFreq, StretchColumn(acPower) );
                 kOut = TransformOutOfAdjustedCrystalFrame(kOutR,nthAod,theta,phi);
@@ -134,7 +134,19 @@ end
                 modelAngle = acos( dot(kOut,kIn) ./ (mag(kOut).*mag(kIn)) );
                 isotropicAngle = wavelengthVac * localFreq / V;
                 fractionalAngleError = abs((isotropicAngle - modelAngle)./modelAngle);
-                fractionalAngleErrorMax = fractionalAngleErrorMax + (fractionalAngleError > fractionalAngleErrorMax) .* (fractionalAngleError - fractionalAngleErrorMax);     
+                fractionalAngleErrorMax = fractionalAngleErrorMax + (fractionalAngleError > fractionalAngleErrorMax) .* (fractionalAngleError - fractionalAngleErrorMax);  
+                
+                function [theta,phi] = CalculateBraggRotationAngles(k,unitK2d,freq)
+                    V = 613;
+                    unitK = [unitK2d;0];
+                    unitKarr = repmat(unitK,1,numOfRays);
+                    zxK = cross([0;0;1],unitK);
+                    zxKarr = repmat(zxK,1,numOfRays);
+                    k2d = k - repmat(dot(k,zxKarr),3,1).*zxKarr;
+                    k2dMag = mag(k2d);
+                    theta = abs( acos(k(3)./k2dMag).*2.*( (dot(unitKarr,k)<0) - 0.5 ) - asin(aod3d.opWavelenVac*freq/2/V) );
+                    phi = acos( dot(k,unitKarr) ./ mag(k) ) .* 2.*( (dot(zxKarr,k)>0) - 0.5 );
+                end
             end
             
             function kInR = TransformToPerturbedCrystalFrame(kIn,n,theta,phi)
@@ -222,6 +234,7 @@ end
                 alpha(0.1)
                 for q = 1:numOfPerturbations
                     indicesForQthPerturbation = (1:numOfRaysPerPerturbation)+(q-1)*numOfRaysPerPerturbation;
+                    figure()
                     plot3(x(:,indicesForQthPerturbation),y(:,indicesForQthPerturbation),z(:,indicesForQthPerturbation),'r');
                 end
                 grid on;
