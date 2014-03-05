@@ -1,20 +1,20 @@
 function [ opt ] = optimise_aod_orientation()
 
-microSecs = -4:4:4;
-xMilsArr = -20:40:20;
+microSecs = -4:2:4;
+xMilsArr = -20:10:20;
 yMilsArr = xMilsArr;
 [xMils, yMils] = meshgrid(xMilsArr, yMilsArr);
 xMils = xMils(:)';
 yMils = yMils(:)';
 focalLength = 5;
-xDeflectMils = 150;
-yDeflectMils = xDeflectMils*0;
+xDeflectMils = 0;
+yDeflectMils = xDeflectMils;
 [xDeflectMils, yDeflectMils] = meshgrid(xDeflectMils, yDeflectMils);
 xDeflectMils = xDeflectMils(:)';
 yDeflectMils = yDeflectMils(:)';
-pairDeflectionRatio = 0;
+pairDeflectionRatio = 0.4;
 baseFreq = 30e6;
-opt = Opt4();
+opt = Opt4range();
 
     function [opt] = Simple2()
         tic
@@ -82,14 +82,22 @@ opt = Opt4();
         toc
     end
 
+    function opt = Opt4range()
+        opt = zeros(4,9);
+        for m = 0:size(opt,1)
+            pairDeflectionRatio = 1/3*m;
+            opt(m+1,:) = Opt4();
+        end
+    end
+
     function [opt] = Opt4()
-        t = [0.023 0.023 0.035 0];
-        p = [-1.5 -1.5 -1.6 -1.6];
-%         for n = 1:4
-%             opt = Aod4(n, t, p);
-%             t(n) = opt(1);
-%             p(n) = opt(2);
-%         end
+        t = [0.02 0.02 0.04 0];
+        p = [-pi/2   -pi/2   -2.7   -pi/2];
+        for n = 1:4
+            opt = Aod4(n, t, p);
+            t(n) = opt(1);
+            p(n) = opt(2);
+        end
         eff = aol_performance(microSecs,xMils,yMils, t, p, xDeflectMils, yDeflectMils, pairDeflectionRatio, baseFreq, true,4 );
         PlotFovEfficiency(t,p);
         opt = [eff,t,p];
@@ -97,8 +105,6 @@ opt = Opt4();
         function [opt] = Aod4(n,tTest,pTest)
             tic
             v = [tTest(n) pTest(n)];
-            lb = [0 -pi];
-            ub = [0.1 pi];
             opt = fminunc(@MinFun,v);
             toc
             function val = MinFun(v)
@@ -111,15 +117,17 @@ opt = Opt4();
     end
 
     function PlotFovEfficiency(theta,phi)
-        fovMils = focalLength * 20;
-        divs = 8;
+        fovMils = focalLength * 100;
+        divs = 10;
         [xDeflectMilsLocal,yDeflectMilsLocal] = meshgrid(linspace(-fovMils/2,fovMils/2,divs));
         xDeflectMilsLocal = xDeflectMilsLocal(:)';
         yDeflectMilsLocal = yDeflectMilsLocal(:)';
-        [ deflectionEff ] =  aol_performance( microSecs, xMils,yMils, theta, phi, xDeflectMilsLocal, yDeflectMilsLocal, pairDeflectionRatio, baseFreq, false, size(theta,2));
+        [ deflectionEff ] =  aol_performance( microSecs, xMils, yMils, theta, phi, xDeflectMilsLocal, yDeflectMilsLocal, pairDeflectionRatio, baseFreq, false, size(theta,2));
         figure();
-        contour(reshape(xDeflectMilsLocal,divs,divs),reshape(yDeflectMilsLocal,divs,divs),reshape(deflectionEff,divs,divs));
+        contour(reshape(xDeflectMilsLocal/focalLength,divs,divs),reshape(yDeflectMilsLocal/focalLength,divs,divs),reshape(deflectionEff,divs,divs));
         colorbar;
+        xlabel('x millirad')
+        ylabel('y millirad')
     end
 end
 

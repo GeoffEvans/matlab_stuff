@@ -17,7 +17,7 @@ end
     end
 
     function [numOfAods, aodDirectionVectors, zPlanesAod, chirp, constFreq, aodCentre] = AolDrive(theta, xDeflection, yDeflection, pairDeflectionRatio, optConstFreq)
-        correctionDistance = aod3d.L / 2.26;
+        correctionDistance = aod3d.L * ( 1 - 1/2.26 );
         numOfAods = size(theta,2);
         if numOfAods == 4
             [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflection, yDeflection, pairDeflectionRatio, optConstFreq);
@@ -44,7 +44,7 @@ end
         function [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq)
             %aodDirectionVectors = {[0;1], [1;0], -[0;1], -[1;0]};
             aodDirectionVectors = {[1;0], [0;1], -[1;0], -[0;1]};
-            aodL = [5e-2, 5e-2, 5e-2, 5e0];
+            aodL = [5e-2, 5e-2, 5e-2, 1];
             
             l1 = aodL(1) - correctionDistance;
             l2 = aodL(2) - correctionDistance;
@@ -95,23 +95,19 @@ end
         end
         
         function k = PropagateThroughAods(k, theta, phi)
-            displacementInPrevAod = zeros(3,numOfRays); % for holding the displacement due to propagation inside the AOD
-            for a=1:numOfAods
-                PropagateToAod(a, k, theta, phi, displacementInPrevAod);
-                [k, eff(a,:), displacementInPrevAod] = DeflectAtAod(a, k, theta, phi);
+            for aodNumber=1:numOfAods
+                PropagateToAod(aodNumber, k, theta, phi);
+                k = DeflectAtAod(aodNumber, k, theta, phi);
             end
             
-            function PropagateToAod(aodNumber,k,theta,phi,displacementInPrevAod)
-                xEndAod = x(aodNumber,:) + displacementInPrevAod(1,:);
-                yEndAod = y(aodNumber,:) + displacementInPrevAod(2,:);
-                zEndAod = z(aodNumber,:) + displacementInPrevAod(3,:);
-                
+            function PropagateToAod(aodNumber,k,theta,phi)                
                 % the vector from a point to anywhere on a plane dotted with the normal equals the distance to the plane from the point
                 unitNormalToAod = GetUnitNormalToAod(aodNumber,theta,phi);
-                vectorToCentreAod = StretchColumn([aodCentre(1,aodNumber); aodCentre(2,aodNumber); zPlanesAod(aodNumber)]) - [xEndAod; yEndAod; zEndAod];
-                x(aodNumber+1,:) = xEndAod + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(1,:);
-                y(aodNumber+1,:) = yEndAod + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(2,:);
-                z(aodNumber+1,:) = zEndAod + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(3,:);
+                vectorToCentreAod = StretchColumn([aodCentre(1,aodNumber); aodCentre(2,aodNumber); zPlanesAod(aodNumber)]) - [x(aodNumber*2-1,:); y(aodNumber*2-1,:); z(aodNumber*2-1,:)];
+                aodEntrance = IndexForAodFront(aodNumber);
+                x(aodEntrance,:) = x(aodEntrance-1,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(1,:);
+                y(aodEntrance,:) = y(aodEntrance-1,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(2,:);
+                z(aodEntrance,:) = z(aodEntrance-1,:) + dot(vectorToCentreAod,unitNormalToAod) ./ dot(k,unitNormalToAod) .* k(3,:);
                 
                 function normalUnitInLabFrame = GetUnitNormalToAod(aodNumber,theta,phi)
                     normalUnitInAodFrame = repmat([0; 0; 1],1,numOfRays);
@@ -119,22 +115,38 @@ end
                 end
             end
             
-            function [kOut, eff, dispInLab] = DeflectAtAod(nthAod, kIn, theta, phi)
-                Kn = aodAcDirectionVectors{nthAod};
-                xFromCentre = x(nthAod+1,:) - aodCentre(1,nthAod);
-                yFromCentre = y(nthAod+1,:) - aodCentre(2,nthAod);
-                phase = StretchTimeArray(t) - ( xFromCentre*Kn(1) + yFromCentre*Kn(2) ) / V;
-                localFreq = StretchBaseFrequencies(constFreq(nthAod,:)) + linearChirps(nthAod) * phase;
-                [thetaBragg, phiBragg] = CalculateBraggRotationAngles(kIn, aodAcDirectionVectors{nthAod}, localFreq);
+            function kOut = DeflectAtAod(nthAod, kIn, theta, phi)
+                localFreq = FindLocalPhase(nthAod);
+                [thetaBragg, phiBragg] = CalculateBraggRotationAngles(kIn, aodAcDirectionVectors{nthAod}, localFreq); % for comparison with optimisations
                 kInR = TransformToPerturbedCrystalFrame(kIn,nthAod,theta,phi);
-                [ dispInCrystal, kOutR, eff, ~ ] = aod3d.aod_propagator_vector( kInR, ones(1,numOfRays), StretchColumn(iPolAir), localFreq, StretchColumn(acPower) );
+                [ dispInCrystal, kOutR, eff(nthAod,:), ~ ] = aod3d.aod_propagator_vector( kInR, ones(1,numOfRays), StretchColumn(iPolAir), localFreq, StretchColumn(acPower) );
                 kOut = TransformOutOfAdjustedCrystalFrame(kOutR,nthAod,theta,phi);
                 dispInLab = TransformOutOfAdjustedCrystalFrame(dispInCrystal,nthAod,theta,phi);
+                CalculateRayPositionAtAodExit(dispInLab, nthAod);
+                CompareModelToSimpleAngles(kIn, kOut, localFreq);
                 
-                modelAngle = acos( dot(kOut,kIn) ./ (mag(kOut).*mag(kIn)) );
-                isotropicAngle = wavelengthVac * localFreq / V;
-                fractionalAngleError = abs((isotropicAngle - modelAngle)./modelAngle);
-                fractionalAngleErrorMax = fractionalAngleErrorMax + (fractionalAngleError > fractionalAngleErrorMax) .* (fractionalAngleError - fractionalAngleErrorMax);  
+                function localFreq = FindLocalPhase(nthAod)
+                    Kn = aodAcDirectionVectors{nthAod};
+                    aodEntrance = IndexForAodFront(nthAod);
+                    xFromCentre = x(aodEntrance,:) - aodCentre(1,nthAod);
+                    yFromCentre = y(aodEntrance,:) - aodCentre(2,nthAod);
+                    phase = StretchTimeArray(t) - ( xFromCentre*Kn(1) + yFromCentre*Kn(2) ) / V;
+                    localFreq = StretchDeflections(constFreq(nthAod,:)) + linearChirps(nthAod) * phase;
+                end
+                
+                function CalculateRayPositionAtAodExit(dispInLab, nthAod)
+                    aodEntrance = IndexForAodFront(nthAod);
+                    x(aodEntrance+1,:) = x(aodEntrance,:) + dispInLab(1,:);
+                    y(aodEntrance+1,:) = y(aodEntrance,:) + dispInLab(2,:);
+                    z(aodEntrance+1,:) = z(aodEntrance,:) + dispInLab(3,:);
+                end
+                
+                function CompareModelToSimpleAngles(kIn, kOut, localFreq)
+                    modelAngle = acos( dot(kOut,kIn) ./ (mag(kOut).*mag(kIn)) );
+                    isotropicAngle = wavelengthVac * localFreq / V;
+                    fractionalAngleError = abs((isotropicAngle - modelAngle)./modelAngle);
+                    fractionalAngleErrorMax = fractionalAngleErrorMax + (fractionalAngleError > fractionalAngleErrorMax) .* (fractionalAngleError - fractionalAngleErrorMax);  
+                end
                 
                 function [theta,phi] = CalculateBraggRotationAngles(k,unitK2d,freq)
                     V = 613;
@@ -191,12 +203,13 @@ end
         
         function [zFocusModel] = PropagateAfterAods(k, findFocus)
             zFocusExpected = zPlanesAod(end);
-            zFocusModel = FindModelFocus(k,zFocusExpected,findFocus);
-            [x(numOfAods+2,:),y(numOfAods+2,:),z(numOfAods+2,:)] = PropagateToNormalPlaneAfterLastAod(k, zFocusExpected); % expected focus
-            [x(numOfAods+3,:),y(numOfAods+3,:),z(numOfAods+3,:)] = PropagateToNormalPlaneAfterLastAod(k, zFocusModel); % model focus
-            [x(numOfAods+4,:),y(numOfAods+4,:),z(numOfAods+4,:)] = PropagateToNormalPlaneAfterLastAod(k, zFocusModel + 2); % past focus
+            lastAodExitIndex = IndexForAodFront(numOfAods) + 1;
+            zFocusModel = FindModelFocus(k,zFocusExpected,findFocus, lastAodExitIndex);
+            [x(lastAodExitIndex+1,:),y(lastAodExitIndex+1,:),z(lastAodExitIndex+1,:)] = PropagateToNormalPlaneAfterLastAod(k, zFocusExpected, lastAodExitIndex); % expected focus
+            [x(lastAodExitIndex+2,:),y(lastAodExitIndex+2,:),z(lastAodExitIndex+2,:)] = PropagateToNormalPlaneAfterLastAod(k, zFocusModel, lastAodExitIndex); % model focus
+            [x(lastAodExitIndex+3,:),y(lastAodExitIndex+3,:),z(lastAodExitIndex+3,:)] = PropagateToNormalPlaneAfterLastAod(k, zFocusModel + zFocusExpected/4, lastAodExitIndex); % past focus
             
-            function focus = FindModelFocus(k,zFocusExpected,findFocus)
+            function focus = FindModelFocus(k,zFocusExpected,findFocus, lastAodExitIndex)
                 if findFocus == true
                     kLocal = k;
                     focus = fminsearch(@MinFunc,zPlanesAod(end));
@@ -204,7 +217,7 @@ end
                     focus = zFocusExpected;
                 end
                 function val = MinFunc(zVal)
-                    [xTemp, yTemp, ~] = PropagateToNormalPlaneAfterLastAod(kLocal,zVal);
+                    [xTemp, yTemp, ~] = PropagateToNormalPlaneAfterLastAod(kLocal,zVal,lastAodExitIndex);
                     xDeflectionCol = reshape(permute(reshape(xTemp,numOfTimes*numOfPositions,numOfDeflections,numOfPerturbations),[1 3 2]),numOfTimes*numOfPositions*numOfPerturbations,numOfDeflections);
                     yDeflectionCol = reshape(permute(reshape(yTemp,numOfTimes*numOfPositions,numOfDeflections,numOfPerturbations),[1 3 2]),numOfTimes*numOfPositions*numOfPerturbations,numOfDeflections);
                     sigmaX = std(xDeflectionCol,1);
@@ -213,17 +226,17 @@ end
                 end
             end
             
-            function [xTemp,yTemp,zTemp] = PropagateToNormalPlaneAfterLastAod(k, zPosition)
-                n = numOfAods+1;
-                vectorToCentreOfPlane = -[x(n,:); y(n,:); z(n,:) - zPosition];
-                xTemp = x(n,:) + vectorToCentreOfPlane(3,:) ./ k(3,:) .* k(1,:);
-                yTemp = y(n,:) + vectorToCentreOfPlane(3,:) ./ k(3,:) .* k(2,:);
-                zTemp = z(n,:) + vectorToCentreOfPlane(3,:);
+            function [xPos,yPos,zPos] = PropagateToNormalPlaneAfterLastAod(k, zPosition, lastAodExitIndex)
+                vectorToCentreOfPlane = -[x(lastAodExitIndex,:); y(lastAodExitIndex,:); z(lastAodExitIndex,:) - zPosition];
+                xPos = x(lastAodExitIndex,:) + vectorToCentreOfPlane(3,:) ./ k(3,:) .* k(1,:);
+                yPos = y(lastAodExitIndex,:) + vectorToCentreOfPlane(3,:) ./ k(3,:) .* k(2,:);
+                zPos = z(lastAodExitIndex,:) + vectorToCentreOfPlane(3,:);
             end
         end
         
         function PlotRays(plotRays,zFocusModel)
             if plotRays
+                figure()
                 hold on;
                 for m=1:numOfAods+1
                     zValAsArray = repmat(zPlanesAod(m),1,4);
@@ -234,7 +247,6 @@ end
                 alpha(0.1)
                 for q = 1:numOfPerturbations
                     indicesForQthPerturbation = (1:numOfRaysPerPerturbation)+(q-1)*numOfRaysPerPerturbation;
-                    figure()
                     plot3(x(:,indicesForQthPerturbation),y(:,indicesForQthPerturbation),z(:,indicesForQthPerturbation),'r');
                 end
                 grid on;
@@ -269,14 +281,17 @@ end
         function [t,x,y,z,eff,k] = InitialiseRayVars(microSecs,xMils,yMils)
             t = microSecs * 0;%1e-6;
             % the column structure of variables below should be [ Pertubrations{Deflections{Positions{Times}}} ]
-            % the rows are input plane, AODs, expected focal plane, model focal plane, end plane - store these all for plotting
-            x = zeros(numOfAods+4,numOfRays);
+            % the rows are input plane, [AOD front AOD back] * 4, expected focal plane, model focal plane, end plane - store these all for plotting
+            x = zeros(numOfAods*2+4,numOfRays);
             x(1,:) = StretchPositionArray(xMils*1e-3);
-            y = zeros(numOfAods+4,numOfRays);
+            y = zeros(numOfAods*2+4,numOfRays);
             y(1,:) = StretchPositionArray(yMils*1e-3);
-            z = zeros(numOfAods+4,numOfRays);
+            z = zeros(numOfAods*2+4,numOfRays);
             eff = zeros(numOfAods,numOfRays);
             k = repmat([0;0;1]*2*pi/wavelengthVac,1,numOfRays); % input laser is orthogonal to AOD centre line
+        end
+        function idx = IndexForAodFront(n)
+            idx = n * 2;
         end
         
         function [ reshaped ] = StretchTimeArray(array)
@@ -285,7 +300,7 @@ end
         function [ reshaped ] = StretchPositionArray(array)
             reshaped = reshape(repmat(array,numOfTimes,numOfDeflections*numOfPerturbations),1,numOfRays);
         end
-        function [ reshaped ] = StretchBaseFrequencies(array)
+        function [ reshaped ] = StretchDeflections(array)
             reshaped = reshape(repmat(array,numOfTimes*numOfPositions,numOfPerturbations),1,numOfRays);
         end
         function [ reshaped ] = StretchColumn(vector)
