@@ -1,13 +1,13 @@
-function [ prodEffOpt, x, y ] = aol_performance( microSecs, xMils, yMils, theta, phi, xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq, findFocusAndPlotRays, numToOptimise )
+function [ prodEffOpt, x, y ] = aol_performance( microSecs, xMilli, yMilli, theta, phi, xDeflectMilli, yDeflectMilli, pairDeflectionRatio, optConstFreq, findFocusAndPlotRays, numToOptimise, scanSpeed )
 
-if size(theta,1) ~= size(phi,1) || size(theta,2) ~= size(phi,2) || length(xMils) ~= length(yMils) ||  size(xDeflectMils,2) ~= size(yDeflectMils,2) ||  size(xDeflectMils,1) ~= 1
+if size(theta,1) ~= size(phi,1) || size(theta,2) ~= size(phi,2) || length(xMilli) ~= length(yMilli) ||  size(xDeflectMilli,2) ~= size(yDeflectMilli,2) ||  size(xDeflectMilli,1) ~= 1
     % size(theta) = size(phi) = [number of orientation perturbations, number of AODs]
     error('argument size mismatch');
 end
 
 [wavelengthVac, acPower, iPolAir, V] = AolConstants(); %TODO instantiate AODs with desired properties...
-[numOfAods, aodAcDirectionVectors, zPlanesAod, linearChirps, constFreq, aodCentre] = AolDrive(theta, xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq); % TODO model the propagation through AOD thickness - adjust drive accordingly
-[ prodEffOpt ] = AolPerformance( microSecs, xMils, yMils, theta, phi, findFocusAndPlotRays, numToOptimise );
+[numOfAods, aodAcDirectionVectors, zPlanesAod, linearChirps, constFreq, aodCentre] = AolDrive(theta, xDeflectMilli, yDeflectMilli, pairDeflectionRatio, optConstFreq); % TODO model the propagation through AOD thickness - adjust drive accordingly
+[ prodEffOpt ] = AolPerformance( microSecs, xMilli, yMilli, theta, phi, findFocusAndPlotRays, numToOptimise );
 
     function [wavelengthVac, acPower, iPolAir, V] = AolConstants()
         acPower = 2; % Watts
@@ -44,7 +44,7 @@ end
         function [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq)
             %aodDirectionVectors = {[0;1], [1;0], -[0;1], -[1;0]};
             aodDirectionVectors = {[1;0], [0;1], -[1;0], -[0;1]};
-            aodL = [5e-2, 5e-2, 5e-2, 1];
+            aodL = [5e-2, 5e-2, 5e-2, 2];
             
             l1 = aodL(1) - correctionDistance;
             l2 = aodL(2) - correctionDistance;
@@ -53,7 +53,13 @@ end
             chirpFactor = [ 1/(l1 + l2 + 2*l3 + 2*l4)...
                 1/(l2 + l3 + 2*l4)...
                 1/(2*(l3 + l4))...
-                1/(2*l4)];      
+                1/(2*l4)];
+            
+            A = scanSpeed / V;
+            chirpFactor = [(1 + A)/(l1 + l2 + 2*l3 + 2*l4 + A*l1 + A*l2)...
+                            1/(l2 + l3 + 2*l4)...
+                        (1 - A)/(2*(l3 + l4))...
+                                      1/(2*l4)];
             f3diff = - V/wavelengthVac * xDeflectMils * 1e-3 ./ (pairDeflectionRatio * sum(aodL) + sum(aodL(3:4)));
             f4diff = - V/wavelengthVac * yDeflectMils * 1e-3 ./ (pairDeflectionRatio * sum(aodL(2:4)) + aodL(4));
             constFreq = [ sum(aodL(3:4))/sum(aodL)*optConstFreq - pairDeflectionRatio*f3diff;...
@@ -88,10 +94,13 @@ end
         [ prodEffOpt ] = AnalysePerformance(eff, numToOptimise, x(end-1,:), y(end-1,:), theta, phi);
         
         function [ prodEffDeflection ] = AnalysePerformance(eff, numToOptimise, xFocus, yFocus, theta, phi)
-            prodEffSingleRay = geomean(eff(1:numToOptimise,:),1); % average over all AODs we are interested in
+            prodEffSingleRay = prod(eff(1:numToOptimise,:),1);
             prodEffDeflectionMat = reshape(prodEffSingleRay,numOfTimes*numOfPositions,numOfDeflections*numOfPerturbations); 
-            prodEffDeflection = mean(prodEffDeflectionMat,1); % average for each deflection
+            prodEffDeflection = mean(prodEffDeflectionMat,1); % average rays for each deflection
             maxFracAngleError = max(fractionalAngleErrorMax);
+            
+            % REMOVE THIS AFTER DOING SCANNING WORK
+            %prodEffDeflection = mean(reshape(prodEffSingleRay,numOfTimes,numOfPositions*numOfDeflections*numOfPerturbations),2); 
         end
         
         function k = PropagateThroughAods(k, theta, phi)
@@ -279,7 +288,7 @@ end
             numOfRaysPerPerturbation = numOfRays / numOfPerturbations;
         end
         function [t,x,y,z,eff,k] = InitialiseRayVars(microSecs,xMils,yMils)
-            t = microSecs * 0;%1e-6;
+            t = microSecs * 1e-6;
             % the column structure of variables below should be [ Pertubrations{Deflections{Positions{Times}}} ]
             % the rows are input plane, [AOD front AOD back] * 4, expected focal plane, model focal plane, end plane - store these all for plotting
             x = zeros(numOfAods*2+4,numOfRays);
