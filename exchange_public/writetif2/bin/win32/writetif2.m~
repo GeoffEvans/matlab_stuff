@@ -1,5 +1,0 @@
-% Replacement of IMWRITE for 8 bit/chan RGB TIFF with unassoc alpha and XPOSITION, YPOSITION tags..
-%
-%
-%#mex
-
