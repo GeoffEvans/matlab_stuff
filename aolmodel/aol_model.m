@@ -1,12 +1,14 @@
 function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbations, xyDeflectionMm, pairDeflectionRatio, optimalBaseFreq, scanSpeed )
-
+    
     numOfAods = size(thetaPhiAodPerturbations,2);
     
-    [aodDirectionVectors, aodCentres, aolDrives] = aol_drive_parameters(numOfAods, xyDeflectionMm, pairDeflectionRatio, optimalBaseFreq, scanSpeed);
+    [aodDirectionVectors, aodCentres, zFocusPredicted, aolDrives] = calculate_aol_drive(numOfAods, optimalBaseFreq, xyDeflectionMm, pairDeflectionRatio, scanSpeed);
     
-    rayBundle = aol_ray_bundle(microSecs,xyInputMm,aolDrives,thetaPhiPerturbs);    
-    PropagateThroughAods(rayBundle);    
-    trace_rays_after_aol(rayBundle, zFocusExpected)
+    rayBundle = aol_ray_bundle(microSecs,xyInputMm,aolDrives,aodCentres,zFocusPredicted,thetaPhiAodPerturbations);    
+    PropagateThroughAods(rayBundle);
+    
+    isPointingModeAndSingleBundle = (rayBundle.numOfPerturbations * rayBundle.numOfDrives == 1) && (scanSpeed == 0);
+    rayBundle.zFocusModel = trace_rays_after_aol(rayBundle, zFocusExpected, isPointingModeAndSingleBundle);
     
     function rayBundle = PropagateThroughAods(numOfAods, rayBundle)
         
@@ -17,15 +19,13 @@ function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbatio
         
         function PropagateToAod(aodNumber,rayBundle)
             unitNormalToAod = GetUnitNormalToAod(aodNumber,rayBundle);
-            xyzAod = propagate_ray_to_plane(rayBundle.GetXyzForAodBack(aodNumber),rayBundle.k,unitNormalToAod,aodCentres(:,aodNumber));
+            xyzAod = propagate_ray_to_plane(rayBundle.GetXyzForAodBack(aodNumber),rayBundle.k,unitNormalToAod,rayBundle.aodCentres(:,aodNumber));
             rayBundle.SetXyzForAodFront(aodNumber,xyzAod);
             
             function normalUnitInLabFrame = GetUnitNormalToAod(aodNumber,rayBundle)
                 normalUnitInAodFrame = repmat([0; 0; 1],rayBundle.numOfPerturbations);
-                normalUnitInLabFrame = TransformFrameAtNthAod(@PerturbedCrystalToLabFrame,normalUnitInAodFrame,aodNumber,rayBundle.perturbsTheta,rayBundle.perturbsPhi);
-                % Need to scale up from number of perturbations to number of rays so reshape:
-                normalUnitInLabFrame = repmat(normalUnitInLabFrame,rayBundle.numOfRaysPerPerturbations,1);
-                normalUnitInLabFrame = reshape(normalUnitInLabFrame,3,rayBundle.numOfRaysPerPerturbations,rayBundle.numOfPerturbations);
+                normalUnitInLabFrame = rayBundle.ApplyPerturbationMatricesToVectors(@PerturbedCrystalToLabFrame,normalUnitInAodFrame,aodNumber);
+                normalUnitInLabFrame = stretch(normalUnitInLabFrame,rayBundle.numOfRaysPerPerturbations);
             end
         end
         
@@ -40,13 +40,13 @@ function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbatio
             rayBundle.k = TransformOutOfPerturbedCrystalFrame(kOutCf, nthAod, theta, phi);
             
             displacementInCrystal = TransformOutOfPerturbedCrystalFrame(displacementInCrystalCf,nthAod,theta,phi);
-            rayBundle.SetXyzNthAodBack(nthAod, xyzIn + displacementInCrystal);
+            rayBundle.SetXyzNthAodBack(nthAod, displacementInCrystal);
             
             function localFreq = FindLocalPhase(nthAod, rayBundle, theta, phi)
                 xyzIn = rayBundle.GetXzyForAodFront(nthAod);
                 xyzInCf = TransformToPerturbedCrystalFrame(xyzIn,nthAod,theta,phi);
-                xFromCentreCf = xyzInCf(1,:) - aodCentres(1,nthAod);
-                yFromCentreCf = xyzInCf(2,:) - aodCentres(2,nthAod);
+                xFromCentreCf = xyzInCf(1,:) - rayBundle.aodCentres(1,nthAod);
+                yFromCentreCf = xyzInCf(2,:) - rayBundle.aodCentres(2,nthAod);
                 
                 acousticDirectionCf = [1 1 0];
                 phase = time - ( xFromCentreCf*acousticDirectionCf(1) + yFromCentreCf*acousticDirectionCf(2) ) / V;
@@ -54,11 +54,11 @@ function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbatio
             end
         end
         
-        function kInR = TransformToPerturbedCrystalFrame(kIn,n,theta,phi)
-            kInR = TransformFrameAtNthAod(@LabToPerturbedCrystalFrame,kIn,n,theta,phi);
+        function kInR = TransformToPerturbedCrystalFrame(kIn,n,rayBundle)
+            kInR = rayBundle.ApplyPerturbationMatricesToVectors(@LabToPerturbedCrystalFrame,kIn,n);
         end
-        function kOut = TransformOutOfPerturbedCrystalFrame(kOutR,n,theta,phi)
-            kOut = TransformFrameAtNthAod(@PerturbedCrystalToLabFrame,kOutR,n,theta,phi);
+        function kOut = TransformOutOfPerturbedCrystalFrame(kOutR,n,rayBundle)
+            kOut = rayBundle.ApplyPerturbationMatricesToVectors(@PerturbedCrystalToLabFrame,kOutR,n);
             function rotation = PerturbedCrystalToLabFrame(n,thetaAod,phiAod)
                 rotation = transpose(LabToPerturbedCrystalFrame(n,thetaAod,phiAod));
             end
@@ -90,15 +90,6 @@ function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbatio
                         0       1       0;...
                         sin(theta)  0   cos(theta)];
                 end
-            end
-        end
-        function vectorsOut = TransformFrameAtNthAod(MapAngleToMatrix, vectorsIn, nthAod, theta, phi)
-            vectorsOut = zeros(3,numOfRaysPerPerturbation,numOfPerturbations);
-            for m = 1:numOfPerturbations
-                phiAod = phi(m,nthAod);
-                thetaAod = theta(m,nthAod);
-                raysForMthPerm = (1:numOfRaysPerPerturbation)+(m-1)*numOfRaysPerPerturbation;
-                vectorsOut(:,raysForMthPerm) = MapAngleToMatrix(nthAod,thetaAod,phiAod) * vectorsIn(:,raysForMthPerm);
             end
         end
     end

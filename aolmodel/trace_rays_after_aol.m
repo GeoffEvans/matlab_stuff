@@ -1,6 +1,6 @@
-function [zFocusModel] = trace_rays_after_aol(rayBundle, zFocusExpected, isPointingModeAndSingleBundle)
+function [zFocusModel] = trace_rays_after_aol(rayBundle, isPointingModeAndSingleBundle)
 
-zFocusModel = FindModelFocus(zFocusExpected, isPointingModeAndSingleBundle);
+zFocusModel = FindModelFocus(rayBundle.zFocusExpected, isPointingModeAndSingleBundle);
 
 normalToPlane = repmat([0 0 1]',1,rayBundle.numOfRays);
 xyz = rayBundle.GetXyzLeavingAol();

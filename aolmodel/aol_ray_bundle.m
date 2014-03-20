@@ -1,6 +1,9 @@
 classdef aol_ray_bundle < handle
-    
-    properties 
+% Principally a class to manage information on each ray ->
+% time,position,efficiency,momentum,centreOfAod,driveFreqs,perturbationOfAod
+
+    properties
+        numOfAods
         numOfTimes
         numOfPositions
         numOfDrives
@@ -12,38 +15,47 @@ classdef aol_ray_bundle < handle
         eff
         k
         xyz
-
+        
+        zFocusModel
+        zFocusPredicted
+        
+        aodCentres
         drives
+        
         perturbsTheta
         perturbsPhi
     end
     
     methods
-        function obj = aol_ray_bundle(microSecs,xyInputMm,drives,thetaPhiPerturbs)
+        function obj = aol_ray_bundle(microSecs,xyInputMm,drives,aodCentres,zFocusPredicted,thetaPhiPerturbs)
             if nargin == 0
                 microSecs = 0;
                 xyInputMm = [0;0];
             end
-            numOfAods = size(thetaPhiPerturbs{1},2);
-
+            obj.numOfAods = size(thetaPhiPerturbs{1},2);
+            
             % plan of attack: put the perturbations in the third dimenson for easy mapping over rotations in the model.
-
-            numOfPlanesZ = numOfAods*2+4; % input plane, 2 planes per AOD, focusPredicted, focusModel, exit plane
+            
+            numOfPlanesZ = obj.numOfAods*2+4; % input plane, 2 planes per AOD, focusPredicted, focusModel, exit plane
             obj.numOfTimes = length(microSecs);
             obj.numOfPositions = size(xyInputMm,2);
             obj.numOfPerturbations = size(thetaPhiPerturbs{1},1);
             obj.numOfDrives = length(drives);
             obj.numOfRays = obj.numOfTimes*obj.numOfPositions*obj.numOfDrives*obj.numOfPerturbations;
-            obj.numOfRaysPerPerturbation = obj.numOfTimes*obj.numOfPositions*obj.numOfDrives;            
-            
+            obj.numOfRaysPerPerturbation = obj.numOfTimes*obj.numOfPositions*obj.numOfDrives;
+                      
+            obj.eff = zeros(obj.numOfAods,obj.numOfRaysPerPerturbation,obj.numOfPerturbations);
             repmatArray = [1,obj.numOfRaysPerPerturbation,obj.numOfPerturbations];
-            obj.t = repmat(microSecs * 1e-6,repmatArray);
-            obj.eff = zeros(numOfAods,obj.numOfRaysPerPerturbation,obj.numOfPerturbations);
             obj.k = repmat([0;0;1]*2*pi/aod3d.opWavelenVac,repmatArray); % input laser is orthogonal to AOD centre line
+            repmatArray = [1,obj.numOfPositions*obj.numOfDrives,obj.numOfPerturbations];
+            obj.t = repmat(microSecs * 1e-6,repmatArray);
+            
             obj.xyz = cell(numOfPlanesZ,1);
             xyzInitial = [xyInputMm*1e-3;zeros(1,size(xyInputMm,2))];
             obj.xyz{1} = obj.StretchPositionArray(xyzInitial);
             
+            obj.zFocusPredicted = zFocusPredicted;
+            obj.aodCentres = aodCentres;
             obj.drives = StretchDrives(drives);
             obj.perturbsTheta = thetaPhiPerturbs{1};
             obj.perturbsPhi = thetaPhiPerturbs{2};
@@ -52,8 +64,8 @@ classdef aol_ray_bundle < handle
         function SetXyzNthAodFront(obj, n, xyzIn)
             obj.xyz{2*n} = xyzIn;
         end
-        function SetXyzNthAodBack(obj, n, xyzIn)
-            obj.xyz{2*n + 1} = xyzIn;
+        function SetXyzNthAodBack(obj, n, displacementInCrystal)
+            obj.xyz{2*n + 1} = obj.xyz{2*n} + displacementInCrystal;
         end
         function xyzOut = GetXyzNthAodFront(obj, n)
             xyzOut = obj.xyz{2*n};
@@ -64,16 +76,22 @@ classdef aol_ray_bundle < handle
         function xyzOut = GetXyzLeavingAol(obj)
             xyzOut = obj.xyz{end - 3};
         end
+        function vectorsOut = ApplyPerturbationMatricesToVectors(MapPerturbationToMatrix, vectorsIn, nthAod)
+            vectorsOut = zeros(3,obj.numOfRaysPerPerturbation,obj.numOfPerturbations);
+            for m = 1:obj.numOfPerturbations
+                phiAod = obj.perturbsPhi(m,nthAod);
+                thetaAod = obj.perturbsPhi(m,nthAod);
+                vectorsOut(:,:,m) = MapPerturbationToMatrix(nthAod,thetaAod,phiAod) * vectorsIn(:,:,m);
+            end
+        end
     end
     methods (Access = private)
         function [ reshaped ] = StretchPositionArray(obj,array)
-            reshaped = repmat(array,obj.numOfTimes,obj.numOfDrives);
-            reshaped = reshape(reshaped,3,obj.numOfRaysPerPerturbation);
-            reshaped = repmat(reshaped,[1,1,obj.numOfPerturbations]);
+            reshaped = stretch(array,obj.numOfTimes);
+            reshaped = repmat(reshaped,[1,obj.numOfDrives,obj.numOfPerturbations]);
         end
         function [ reshaped ] = StretchDrives(obj,array)
-            reshaped = repmat(array,obj.numOfTimes*obj.numOfPosititions);
-            reshaped = reshape(reshaped,1,obj.numOfRaysPerPerturbation);
+            reshaped = stretch(array,obj.numOfTimes*obj.numOfPosititions);
             reshaped = repmat(reshaped,[1,1,obj.numOfPerturbations]);
         end
     end
