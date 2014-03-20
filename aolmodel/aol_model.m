@@ -1,6 +1,6 @@
 function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbations, xyDeflectionMm, pairDeflectionRatio, optimalBaseFreq, scanSpeed )
     
-    numOfAods = size(thetaPhiAodPerturbations,2);
+    numOfAods = size(thetaPhiAodPerturbations{1},2);
     
     [aodDirectionVectors, aodCentres, zFocusPredicted, aolDrives] = calculate_aol_drive(numOfAods, optimalBaseFreq, xyDeflectionMm, pairDeflectionRatio, scanSpeed);
     
@@ -10,9 +10,9 @@ function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbatio
     isPointingModeAndSingleBundle = (rayBundle.numOfPerturbations * rayBundle.numOfDrives == 1) && (scanSpeed == 0);
     rayBundle.zFocusModel = trace_rays_after_aol(rayBundle, zFocusExpected, isPointingModeAndSingleBundle);
     
-    function rayBundle = PropagateThroughAods(numOfAods, rayBundle)
+    function rayBundle = PropagateThroughAods(rayBundle)
         
-        for aodNumber=1:numOfAods
+        for aodNumber = 1:rayBundle.numOfAods
             PropagateToAod(aodNumber, rayBundle);
             DeflectAtAod(aodNumber, rayBundle);
         end
@@ -24,7 +24,7 @@ function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbatio
             
             function normalUnitInLabFrame = GetUnitNormalToAod(aodNumber,rayBundle)
                 normalUnitInAodFrame = repmat([0; 0; 1],rayBundle.numOfPerturbations);
-                normalUnitInLabFrame = rayBundle.ApplyPerturbationMatricesToVectors(@PerturbedCrystalToLabFrame,normalUnitInAodFrame,aodNumber);
+                normalUnitInLabFrame = rayBundle.ApplyPerturbationMatricesToVectors(@TransformOutOfPerturbedCrystalFrame,normalUnitInAodFrame,aodNumber);
                 normalUnitInLabFrame = stretch(normalUnitInLabFrame,rayBundle.numOfRaysPerPerturbations);
             end
         end

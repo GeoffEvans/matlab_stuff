@@ -9,8 +9,8 @@ opt = Simple4(0);
 
     function [opt] = Simple4(scanSpeed)
         tic
-        tp = [0.0389    0.0530    0.0029    0.0015 ;     -1.5708   -2.3157   -2.7    -1.5708]; % 30MHz
-        tp = [0.0399    0.0639   -0.0175   -0.0121 ;   -1.5708  -2.4666   -2.7001   -1.5708]; % 40MHz
+        tp = {[0.0389    0.0530    0.0029    0.0015 ],     [-1.5708   -2.3157   -2.7    -1.5708]}; % 30MHz
+        tp = {[0.0399    0.0639   -0.0175   -0.0121],   [-1.5708  -2.4666   -2.7001   -1.5708]}; % 40MHz
         val = aol_efficiency(microSecs,xyMm, tp, xyDeflectMm, pairDeflectionRatio, baseFreq, scanSpeed, 4, true );
         opt = val;
         toc

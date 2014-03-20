@@ -56,7 +56,7 @@ classdef aol_ray_bundle < handle
             
             obj.zFocusPredicted = zFocusPredicted;
             obj.aodCentres = aodCentres;
-            obj.drives = StretchDrives(drives);
+            obj.drives = obj.StretchDrives(drives);
             obj.perturbsTheta = thetaPhiPerturbs{1};
             obj.perturbsPhi = thetaPhiPerturbs{2};
         end
@@ -76,7 +76,7 @@ classdef aol_ray_bundle < handle
         function xyzOut = GetXyzLeavingAol(obj)
             xyzOut = obj.xyz{end - 3};
         end
-        function vectorsOut = ApplyPerturbationMatricesToVectors(MapPerturbationToMatrix, vectorsIn, nthAod)
+        function vectorsOut = ApplyPerturbationMatricesToVectors(obj, MapPerturbationToMatrix, vectorsIn, nthAod)
             vectorsOut = zeros(3,obj.numOfRaysPerPerturbation,obj.numOfPerturbations);
             for m = 1:obj.numOfPerturbations
                 phiAod = obj.perturbsPhi(m,nthAod);
@@ -91,7 +91,7 @@ classdef aol_ray_bundle < handle
             reshaped = repmat(reshaped,[1,obj.numOfDrives,obj.numOfPerturbations]);
         end
         function [ reshaped ] = StretchDrives(obj,array)
-            reshaped = stretch(array,obj.numOfTimes*obj.numOfPosititions);
+            reshaped = stretch(array,obj.numOfTimes*obj.numOfPositions);
             reshaped = repmat(reshaped,[1,1,obj.numOfPerturbations]);
         end
     end
