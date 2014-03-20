@@ -76,8 +76,17 @@ classdef aol_ray_bundle < handle
         function xyzOut = GetXyzLeavingAol(obj)
             xyzOut = obj.xyz{end - 3};
         end
+        
+        function bf = BaseFreqForNthAod(obj, nthAod)
+            % TODO
+        end
+        
+        function c = ChirpForNthAod(obj, nthAod)
+            % TODO 
+        end
+        
         function vectorsOut = ApplyPerturbationMatricesToVectors(obj, MapPerturbationToMatrix, vectorsIn, nthAod)
-            vectorsOut = zeros(3,obj.numOfRaysPerPerturbation,obj.numOfPerturbations);
+            vectorsOut = zeros(size(vectorsIn));
             for m = 1:obj.numOfPerturbations
                 phiAod = obj.perturbsPhi(m,nthAod);
                 thetaAod = obj.perturbsPhi(m,nthAod);

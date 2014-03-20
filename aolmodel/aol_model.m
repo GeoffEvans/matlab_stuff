@@ -19,13 +19,14 @@ function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbatio
         
         function PropagateToAod(aodNumber,rayBundle)
             unitNormalToAod = GetUnitNormalToAod(aodNumber,rayBundle);
-            xyzAod = propagate_ray_to_plane(rayBundle.GetXyzForAodBack(aodNumber),rayBundle.k,unitNormalToAod,rayBundle.aodCentres(:,aodNumber));
-            rayBundle.SetXyzForAodFront(aodNumber,xyzAod);
+            aodCentresMatrix = repmat(rayBundle.aodCentres(:,aodNumber),[1,rayBundle.numOfRaysPerPerturbation,rayBundle.numOfPerturbations]);
+            xyzAod = propagate_ray_to_plane(rayBundle.GetXyzNthAodBack(aodNumber-1),rayBundle.k,unitNormalToAod,aodCentresMatrix);
+            rayBundle.SetXyzNthAodFront(aodNumber,xyzAod);
             
             function normalUnitInLabFrame = GetUnitNormalToAod(aodNumber,rayBundle)
                 normalUnitInAodFrame = repmat([0; 0; 1],rayBundle.numOfPerturbations);
-                normalUnitInLabFrame = rayBundle.ApplyPerturbationMatricesToVectors(@TransformOutOfPerturbedCrystalFrame,normalUnitInAodFrame,aodNumber);
-                normalUnitInLabFrame = stretch(normalUnitInLabFrame,rayBundle.numOfRaysPerPerturbations);
+                normalUnitInLabFrame = TransformOutOfPerturbedCrystalFrame(normalUnitInAodFrame,aodNumber,rayBundle);
+                normalUnitInLabFrame = repmat(stretch(normalUnitInLabFrame,rayBundle.numOfRaysPerPerturbation),[1,1,rayBundle.numOfPerturbations]);
             end
         end
         
@@ -33,7 +34,7 @@ function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbatio
             theta = rayBundle.perturbsTheta;
             phi = rayBundle.perturbsPhi;
             
-            localFreq = FindLocalPhase(nthAod, rayBundle, theta, phi);
+            localFreq = FindLocalPhase(nthAod, rayBundle);
 
             kInCf = TransformToPerturbedCrystalFrame(rayBundle.k, nthAod, theta, phi);
             [ displacementInCrystalCf, kOutCf, rayBundle.eff(nthAod,:) ] = AodModel( kInCf, localFreq );
@@ -42,15 +43,18 @@ function [ rayBundle ] = aol_model( microSecs, xyInputMm, thetaPhiAodPerturbatio
             displacementInCrystal = TransformOutOfPerturbedCrystalFrame(displacementInCrystalCf,nthAod,theta,phi);
             rayBundle.SetXyzNthAodBack(nthAod, displacementInCrystal);
             
-            function localFreq = FindLocalPhase(nthAod, rayBundle, theta, phi)
-                xyzIn = rayBundle.GetXzyForAodFront(nthAod);
-                xyzInCf = TransformToPerturbedCrystalFrame(xyzIn,nthAod,theta,phi);
+            function localFreq = FindLocalPhase(nthAod, rayBundle)
+                xyzIn = rayBundle.GetXyzNthAodFront(nthAod);
+                xyzInCf = TransformToPerturbedCrystalFrame(xyzIn,nthAod,rayBundle);
                 xFromCentreCf = xyzInCf(1,:) - rayBundle.aodCentres(1,nthAod);
                 yFromCentreCf = xyzInCf(2,:) - rayBundle.aodCentres(2,nthAod);
                 
+                V = teo2.find_v_ac_min(pi/2,pi/4);
                 acousticDirectionCf = [1 1 0];
-                phase = time - ( xFromCentreCf*acousticDirectionCf(1) + yFromCentreCf*acousticDirectionCf(2) ) / V;
-                localFreq = rayBundle.drives.baseFreq(nthAod) + rayBundle.drives.chirp(nthAod) * phase;
+                
+                phase = rayBundle.t - ( xFromCentreCf*acousticDirectionCf(1) + yFromCentreCf*acousticDirectionCf(2) ) / V;
+                
+                localFreq = rayBundle.BaseFreqForNthAod(nthAod) + rayBundle.ChirpForNthAod(nthAod) * phase;
             end
         end
         
