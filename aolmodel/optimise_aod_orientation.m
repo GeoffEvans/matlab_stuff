@@ -1,6 +1,6 @@
 function [ opt ] = optimise_aod_orientation()
 
-microSecs = 4;
+microSecs = -4:4:4;
 xyMm = GeneratePositionGrid(2);
 xyDeflectMm = GeneratePositionGrid(5);
 pairDeflectionRatio = 0;
@@ -14,10 +14,10 @@ opt = Simple4(0);
         aolPerturbations = aol_perturbations(t,p);
         t = [0.0399    0.0639   -0.0175   -0.0121];
         p = [ -1.5708  -2.4666   -2.7001   -1.5708]; % 40MHz
-        %aolPerturbations.AddPerturbation(t,p);
+        aolPerturbations.AddPerturbation(t,p);
         t = [0 0 0 0];
         p = [0 0 0 0];
-        %aolPerturbations.AddPerturbation(t,p);
+        aolPerturbations.AddPerturbation(t,p);
         
         val = aol_efficiency(microSecs,xyMm, aolPerturbations, xyDeflectMm, pairDeflectionRatio, baseFreq, scanSpeed, 4, true );
         opt = val;
