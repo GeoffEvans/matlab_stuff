@@ -21,34 +21,34 @@ classdef aol_ray_bundle < handle
         
         aodCentres
         drives
-        
-        perturbsTheta
-        perturbsPhi
+        perturbations
     end
     
     methods
-        function obj = aol_ray_bundle(microSecs,xyInputMm,drives,aodCentres,zFocusPredicted,thetaPhiPerturbs)
+        function obj = aol_ray_bundle(microSecs,xyInputMm,drives,aodCentres,zFocusPredicted,aolPerturbs)
             if nargin == 0
                 microSecs = 0;
                 xyInputMm = [0;0];
             end
-            obj.numOfAods = size(thetaPhiPerturbs{1},2);
+            obj.numOfAods = aolPerturbs.numOfAods;
             
-            % plan of attack: put the perturbations in the third dimenson for easy mapping over rotations in the model.
+            % plan of attack: put the perturbations in the third dimension of xyz,k,eff for easy mapping over rotations in the model.
             
             numOfPlanesZ = obj.numOfAods*2+4; % input plane, 2 planes per AOD, focusPredicted, focusModel, exit plane
             obj.numOfTimes = length(microSecs);
             obj.numOfPositions = size(xyInputMm,2);
-            obj.numOfPerturbations = size(thetaPhiPerturbs{1},1);
+            obj.numOfPerturbations = aolPerturbs.numOfPerturbations;
             obj.numOfDrives = length(drives);
             obj.numOfRays = obj.numOfTimes*obj.numOfPositions*obj.numOfDrives*obj.numOfPerturbations;
             obj.numOfRaysPerPerturbation = obj.numOfTimes*obj.numOfPositions*obj.numOfDrives;
                       
             obj.eff = zeros(obj.numOfAods,obj.numOfRaysPerPerturbation,obj.numOfPerturbations);
-            repmatArray = [1,obj.numOfRaysPerPerturbation,obj.numOfPerturbations];
-            obj.k = repmat([0;0;1]*2*pi/aod3d.opWavelenVac,repmatArray); % input laser is orthogonal to AOD centre line
-            repmatArray = [1,obj.numOfPositions*obj.numOfDrives,obj.numOfPerturbations];
-            obj.t = repmat(microSecs * 1e-6,repmatArray);
+            
+            repmatArrayK = [1,obj.numOfRaysPerPerturbation,obj.numOfPerturbations];
+            obj.k = repmat([0;0;1]*2*pi/aod3d.opWavelenVac,repmatArrayK); % input laser is orthogonal to AOD centre line
+            
+            repmatArrayT = [1,obj.numOfPositions*obj.numOfDrives,obj.numOfPerturbations];
+            obj.t = repmat(microSecs * 1e-6,repmatArrayT);
             
             obj.xyz = cell(numOfPlanesZ,1);
             xyzInitial = [xyInputMm*1e-3;zeros(1,size(xyInputMm,2))];
@@ -57,8 +57,7 @@ classdef aol_ray_bundle < handle
             obj.zFocusPredicted = zFocusPredicted;
             obj.aodCentres = aodCentres;
             obj.drives = obj.StretchDrives(drives);
-            obj.perturbsTheta = thetaPhiPerturbs{1};
-            obj.perturbsPhi = thetaPhiPerturbs{2};
+            obj.perturbations = aolPerturbs;
         end
         
         function SetXyzNthAodFront(obj, n, xyzIn)
@@ -78,20 +77,31 @@ classdef aol_ray_bundle < handle
         end
         
         function bf = BaseFreqForNthAod(obj, nthAod)
-            % TODO
+            drivesLocal = obj.drives;
+            bf = [drivesLocal.baseFreq];
+            bf = reshape(bf,[obj.numOfAods,obj.numOfRaysPerPerturbation,obj.numOfPerturbations]);
+            bf = bf(nthAod,:,:);
         end
         
         function c = ChirpForNthAod(obj, nthAod)
-            % TODO 
+            drivesLocal = obj.drives;
+            c = [drivesLocal.chirp];
+            c = reshape(c,[obj.numOfAods,obj.numOfRaysPerPerturbation,obj.numOfPerturbations]);
+            c = c(nthAod,:,:);
         end
         
         function vectorsOut = ApplyPerturbationMatricesToVectors(obj, MapPerturbationToMatrix, vectorsIn, nthAod)
             vectorsOut = zeros(size(vectorsIn));
+            phiPerturbs = obj.perturbations.GetPerturbationsForAod(nthAod);
+            thetaPerturbs = obj.perturbations.GetPerturbationsForAod(nthAod);
             for m = 1:obj.numOfPerturbations
-                phiAod = obj.perturbsPhi(m,nthAod);
-                thetaAod = obj.perturbsPhi(m,nthAod);
-                vectorsOut(:,:,m) = MapPerturbationToMatrix(nthAod,thetaAod,phiAod) * vectorsIn(:,:,m);
+                vectorsOut(:,:,m) = MapPerturbationToMatrix(nthAod,thetaPerturbs(m),phiPerturbs(m)) * vectorsIn(:,:,m);
             end
+        end
+        
+        function centres = AodCentreForEachRay(obj,nthAod)
+            centreForAod = obj.aodCentres(:,nthAod);
+            centres = repmat(centreForAod,[1,obj.numOfRaysPerPerturbation,obj.numOfPerturbations]);
         end
     end
     methods (Access = private)

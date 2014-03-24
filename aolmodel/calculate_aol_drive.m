@@ -1,5 +1,5 @@
 function [aodDirectionVectors, aodCentres, zFocusPredicted, aolDrives] = calculate_aol_drive(numOfAods, optimalBaseFreq, xyDeflectionMm, pairDeflectionRatio, scanSpeed)
-% Returns 2xnumOfAods aodDirectionVectors, 3xnumOfAods aodCentres, {numOfDrivesxnumOfAods chirp, numOfDrivesxnumOfAods baseFreq}
+% Returns cell aodDirectionVectors; 3,numOfAods aodCentres; numOfAods,numOfDrives chirp; numOfAods,numOfDrives baseFreq}
 if length(optimalBaseFreq) ~= 1
     error('optimal base freq must be singleton')
 end
@@ -51,27 +51,26 @@ aolDrives = aol_drive(baseFreq,chirp);
         aodDirectionVectors = {[1;0], [0;1], -[1;0], -[0;1]};
         aodSpacing = [5e-2, 5e-2, 5e-2, 2];
         
-        l1 = aodSpacing(1) - correctionDistance;
-        l2 = aodSpacing(2) - correctionDistance;
-        l3 = aodSpacing(3) - correctionDistance;
-        l4 = aodSpacing(4) - correctionDistance;
+        effctvSpcng = aodSpacing - correctionDistance;
         
         A = scanSpeed / V;
-        chirpFactor = [(1 + A)/(l1 + l2 + 2*l3 + 2*l4 + A*l1 + A*l2)...
-            1/(l2 + l3 + 2*l4)...
-            (1 - A)/(2*(l3 + l4))...
-            1/(2*l4)];
+        chirpFactor = [(1 + A)./(effctvSpcng(1) + effctvSpcng(2) + 2*effctvSpcng(3) + 2*effctvSpcng(4) + A*effctvSpcng(1) + A*effctvSpcng(2));...
+            A*0 + 1./(effctvSpcng(2) + effctvSpcng(3) + 2*effctvSpcng(4));...
+            (1 - A)./(2*(effctvSpcng(3) + effctvSpcng(4)));...
+            A*0 + 1./(2*effctvSpcng(4))];
         
-        f3diff = - V/lambda .* xyDeflectionMm(1,:) .* 1e-3 ./ (pairDeflectionRatio .* sum(aodSpacing) + sum(aodSpacing(3:4)));
-        f4diff = - V/lambda .* xyDeflectionMm(2,:) .* 1e-3 ./ (pairDeflectionRatio .* sum(aodSpacing(2:4)) + aodSpacing(4));
-        baseFreq = [ sum(aodSpacing(3:4))/sum(aodSpacing).*optimalBaseFreq - pairDeflectionRatio.*f3diff,...
-            aodSpacing(4)/sum(aodSpacing(2:4)).*optimalBaseFreq - pairDeflectionRatio.*f4diff, optimalBaseFreq+f3diff, optimalBaseFreq+f4diff];
+        f3diff = - V/lambda .* xyDeflectionMm(1,:) .* 1e-3 ./ (pairDeflectionRatio .* sum(effctvSpcng) + sum(effctvSpcng(3:4)));
+        f4diff = - V/lambda .* xyDeflectionMm(2,:) .* 1e-3 ./ (pairDeflectionRatio .* sum(effctvSpcng(2:4)) + effctvSpcng(4));
+        baseFreq = [ sum(effctvSpcng(3:4))/sum(effctvSpcng).*optimalBaseFreq - pairDeflectionRatio.*f3diff;...
+            effctvSpcng(4)/sum(effctvSpcng(2:4)).*optimalBaseFreq - pairDeflectionRatio.*f4diff; optimalBaseFreq+f3diff; optimalBaseFreq+f4diff];
     end
 end
 
-function [twoByMany,b,c] = GetAllCombinations(twoByMany,b,c)
+function [twoByManyStretched,b,c] = GetAllCombinations(twoByMany,b,c)
     [b,c] = meshgrid(b,c);
     b = b(:);
     c = c(:);
-    twoByMany = stretch(twoByMany,length(b));
+    twoByManyStretched = stretch(twoByMany,length(b));
+    b = repmat(b,size(twoByMany,2),1)';
+    c = repmat(c,size(twoByMany,2),1)';
 end

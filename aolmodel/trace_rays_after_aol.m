@@ -1,17 +1,18 @@
-function [zFocusModel] = trace_rays_after_aol(rayBundle, isPointingModeAndSingleBundle)
+function trace_rays_after_aol(rb, isPointingModeAndSingleBundle)
 
-zFocusModel = FindModelFocus(rayBundle.zFocusExpected, isPointingModeAndSingleBundle);
+enlargementArray = [1,rb.numOfRaysPerPerturbation,rb.numOfPerturbations];
+normalToPlane = repmat([0; 0; 1],enlargementArray);
+xyz = rb.GetXyzLeavingAol();
+k = rb.k;
 
-normalToPlane = repmat([0 0 1]',1,rayBundle.numOfRays);
-xyz = rayBundle.GetXyzLeavingAol();
-k = rayBundle.k;
+rb.zFocusModel = FindModelFocus(rb.zFocusPredicted, isPointingModeAndSingleBundle);
 
-rayBundle.xyz{end-2} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(zFocusExpected,rayBundle));
-rayBundle.xyz{end-1} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(zFocusModel,rayBundle));
-rayBundle.xyz{end} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(zFocusExpected*1.2,rayBundle));
+rb.xyz{end-2} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(rb.zFocusPredicted));
+rb.xyz{end-1} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(rb.zFocusModel));
+rb.xyz{end} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(rb.zFocusPredicted*1.2));
 
-    function point = PointAtZ(zVal,rayBundle)
-        point = repmat([0 0 zVal]',1,rayBundle.numOfRays);
+    function point = PointAtZ(zVal)
+        point = repmat([0 0 zVal]',enlargementArray);
     end
 
     function focus = FindModelFocus(zFocusExpected, isPointingModeAndSingleBundle)

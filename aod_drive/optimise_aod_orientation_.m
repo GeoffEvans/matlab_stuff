@@ -1,20 +1,20 @@
-function [ opt ] = optimise_aod_orientation()
+function [ opt ] = optimise_aod_orientation_()
 
-microSecs = -4:2:4;
-xMilsArr = -20:10:20;
+microSecs = -4:4:4;
+xMilsArr = -20:20:20;
 yMilsArr = xMilsArr;
 [xMils, yMils] = meshgrid(xMilsArr, yMilsArr);
 xMils = xMils(:)';
 yMils = yMils(:)';
-focalLength = 5;
+focalLength = 2;
 xDeflectMils = 0;
 yDeflectMils = xDeflectMils;
 [xDeflectMils, yDeflectMils] = meshgrid(xDeflectMils, yDeflectMils);
 xDeflectMils = xDeflectMils(:)';
 yDeflectMils = yDeflectMils(:)';
 pairDeflectionRatio = 0.4;
-baseFreq = 30e6;
-opt = Opt4range();
+baseFreq = 40e6;
+opt = Simple4(0);
 
     function [opt] = Simple2()
         tic
@@ -61,25 +61,55 @@ opt = Opt4range();
         end
     end
 
-    function [opt] = Simple4()
+    function [opt] = Simple4(scanSpeed)
         tic
-        numberOfAods = 4;
-        theta = cell(1,numberOfAods);
-        phi = cell(1,numberOfAods);
-        theta{1} = 0.023;
-        phi{1} = -pi/2;
-        theta{2} = 0.023;
-        phi{2} = -pi/2;
-        theta{3} = 0.025;
-        phi{3} = -1.6176;
-        theta{4} = 0;
-        phi{4} = 1.6;
-        
-        [theta,phi] = GetAnglePermutations(numberOfAods, [theta,phi]);
-        val = aol_performance(microSecs,xMils,yMils, theta, phi, xDeflectMils, yDeflectMils, pairDeflectionRatio, baseFreq, true,4 );
-        PlotFovEfficiency(theta,phi)
-        opt = [theta,phi];
+        t = [0.0389    0.0530    0.0029    0.0015]; %30MHz
+        p = [-1.5708   -2.3157   -2.7    -1.5708]; % 30MHz
+        t = [0.0399    0.0639   -0.0175   -0.0121]; %40MHz
+        p = [ -1.5708  -2.4666   -2.7001   -1.5708]; % 40MHz
+        val = aol_performance(microSecs,xMils,yMils, t, p, xDeflectMils, yDeflectMils, pairDeflectionRatio, baseFreq, true,4, -scanSpeed );
+        %PlotFovEfficiency(t,p)
+        opt = val;
         toc
+    end
+
+    function d = CompareScans()
+        d = zeros(7,13);
+        scanSpeed = 72/48*1000;
+        microSecs = -24:4:24;
+        d(1,:) = Simple4(scanSpeed);
+        
+        scanSpeed = 72/60*1000;
+        microSecs = -30:5:30;
+        d(2,:) = Simple4(scanSpeed);
+
+        scanSpeed = 72/90*1000;
+        microSecs = -45:7.5:45;
+        d(3,:) = Simple4(scanSpeed);
+        
+        scanSpeed = 72/120*1000;
+        microSecs = -60:10:60;
+        d(4,:) = Simple4(scanSpeed);
+        
+        scanSpeed = 72/180*1000;
+        microSecs = -90:15:90;
+        d(5,:) = Simple4(scanSpeed);
+        
+        scanSpeed = 72/360*1000;
+        microSecs = -180:30:180;
+        d(6,:) = Simple4(scanSpeed);
+        
+        scanSpeed = 0;
+        microSecs = -4:1:4;
+        for xDeflectMils = -36:6:36
+            d(7,-xDeflectMils/6+7) = mean(Simple4(0));
+        end
+        
+        figure()
+        plot(-(-18:3:18)'*ones(1,7),d');
+        legend('1500','1200','800','600','400','200','pointing');
+        xlabel('deflection / mrad')
+        ylabel('efficiency')
     end
 
     function opt = Opt4range()
@@ -91,15 +121,17 @@ opt = Opt4range();
     end
 
     function [opt] = Opt4()
-        t = [0.02 0.02 0.04 0];
-        p = [-pi/2   -pi/2   -2.7   -pi/2];
+        t = [0.0389    0.0530    0.0029    0.0015]; %30MHz
+        p = [-1.5708   -2.3157   -2.7    -1.5708]; % 30MHz
+        t = [ 0.0399    0.0638   -0.0399   -0.0095]; %40MHz
+        p = [ -1.5708  -2.4666    -0.2385   -1.5708]; % 40MHz
         for n = 1:4
             opt = Aod4(n, t, p);
             t(n) = opt(1);
             p(n) = opt(2);
         end
-        eff = aol_performance(microSecs,xMils,yMils, t, p, xDeflectMils, yDeflectMils, pairDeflectionRatio, baseFreq, true,4 );
-        PlotFovEfficiency(t,p);
+        eff = aol_performance(microSecs,xMils,yMils, t, p, xDeflectMils, yDeflectMils, pairDeflectionRatio, baseFreq, true,4,0 );
+        %PlotFovEfficiency(t,p);
         opt = [eff,t,p];
         
         function [opt] = Aod4(n,tTest,pTest)
@@ -110,7 +142,7 @@ opt = Opt4range();
             function val = MinFun(v)
                 tTest(n) = v(1);
                 pTest(n) = v(2);
-                val = -aol_performance(microSecs,xMils,yMils, tTest, pTest, xDeflectMils, yDeflectMils, pairDeflectionRatio, baseFreq, false, n );
+                val = -aol_performance(microSecs,xMils,yMils, tTest, pTest, xDeflectMils, yDeflectMils, pairDeflectionRatio, baseFreq, false, n,0 );
                 val = harmmean(val,2);  % average over all deflections: want low efficiency in fov to have big effect
             end
         end

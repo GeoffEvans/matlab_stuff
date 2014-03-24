@@ -1,8 +1,10 @@
-function [ eff ] = aol_analysis( rayBundle, numAodsToOptimize )
+function [ eff ] = aol_analysis( rayBundle, numAodsToOptimize, scanSpeed )
 
 effEachRay = prod(rayBundle.eff(numAodsToOptimize,:,:),1);
 numOfDrives = rayBundle.numOfDrives;
 numOfPositions = rayBundle.numOfPositions;
+
+fractionalFocusErrorZ = rayBundle.zFocusPredicted/rayBundle.zFocusModel - 1
 
 if sum(abs(scanSpeed)) > 0
     eff = AnalyseScanningMode(effEachRay,numOfDrives,numOfPositions);

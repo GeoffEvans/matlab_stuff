@@ -1,17 +1,25 @@
 function [ opt ] = optimise_aod_orientation()
 
-microSecs = -4:1:4;
-xyMm = GeneratePositionGrid(-20:20:20);
-xyDeflectMm = GeneratePositionGrid(0);
-pairDeflectionRatio = 0.4;
+microSecs = 4;
+xyMm = GeneratePositionGrid(2);
+xyDeflectMm = GeneratePositionGrid(5);
+pairDeflectionRatio = 0;
 baseFreq = 40e6;
 opt = Simple4(0);
 
     function [opt] = Simple4(scanSpeed)
         tic
-        tp = {[0.0389    0.0530    0.0029    0.0015 ],     [-1.5708   -2.3157   -2.7    -1.5708]}; % 30MHz
-        tp = {[0.0399    0.0639   -0.0175   -0.0121],   [-1.5708  -2.4666   -2.7001   -1.5708]}; % 40MHz
-        val = aol_efficiency(microSecs,xyMm, tp, xyDeflectMm, pairDeflectionRatio, baseFreq, scanSpeed, 4, true );
+        t = [0.0389    0.0530    0.0029    0.0015 ];
+        p = [-1.5708   -2.3157   -2.7    -1.5708]; % 30MHz
+        aolPerturbations = aol_perturbations(t,p);
+        t = [0.0399    0.0639   -0.0175   -0.0121];
+        p = [ -1.5708  -2.4666   -2.7001   -1.5708]; % 40MHz
+        %aolPerturbations.AddPerturbation(t,p);
+        t = [0 0 0 0];
+        p = [0 0 0 0];
+        %aolPerturbations.AddPerturbation(t,p);
+        
+        val = aol_efficiency(microSecs,xyMm, aolPerturbations, xyDeflectMm, pairDeflectionRatio, baseFreq, scanSpeed, 4, true );
         opt = val;
         toc
     end
@@ -35,7 +43,6 @@ opt = Simple4(0);
             p(n) = opt(2);
         end
         eff = aol_efficiency(microSecs,xMm,yMm, t, p, xDeflectMm, yDeflectMm, pairDeflectionRatio, baseFreq, true,4,0 );
-        %PlotFovEfficiency(t,p);
         opt = [eff,t,p];
         
         function [opt] = Aod4(n,tTest,pTest)
