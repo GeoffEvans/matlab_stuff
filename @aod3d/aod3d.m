@@ -1,7 +1,7 @@
 classdef aod3d
     
     properties (Constant)
-        L = 3.6e-3; % transducer length
+        L = 1.8e-3; % transducer length
         opWavelenVac = 800e-9;
     end
     

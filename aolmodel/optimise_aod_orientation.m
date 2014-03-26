@@ -15,7 +15,8 @@ aolPerturbations = SpecifyPerturbations(-1);
 
 %opt = OptimiseAngles4();
 
-PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
+%PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
+PlotFovEfficiencyScanning(1,focalLength,[200,600,1400,2000,3000,4000,5000]);
 
     function [eff] = Simple4()
         driveParams = MakeDriveParams(xyDeflectMm, pairDeflectionRatio, scanSpeed, baseFreq, focalLength);
@@ -55,8 +56,7 @@ PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
         divs = 10;
         fovMm = focalLengthLocal * 1000 * fovAngle;
         [xDeflectMmLocal,yDeflectMmLocal] = meshgrid(linspace(-fovMm/2,fovMm/2,divs));
-        xyDeflectMmLocal(1,:) = xDeflectMmLocal(:)';
-        xyDeflectMmLocal(2,:) = yDeflectMmLocal(:)';
+        xyDeflectMmLocal = [xDeflectMmLocal(:)'; yDeflectMmLocal(:)'];
         driveParams = MakeDriveParams(xyDeflectMmLocal, pairDeflectionRatioLocal, 0, baseFreq, focalLengthLocal);
         deflectionEff = simulate_aol(microSecs,xyMm, SpecifyPerturbations(-1), driveParams, 4, true );
         figure();
@@ -64,6 +64,26 @@ PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
         colorbar;
         xlabel('x millirad')
         ylabel('y millirad')
+    end
+
+    function PlotFovEfficiencyScanning(pairDeflectionRatioLocal, focalLengthLocal, scanSpeedLocal)
+        %scanSpeedLocal = -scanSpeedLocal;
+        fovAngle = 36e-3;
+        divs = 11;
+        angles = linspace(-fovAngle,fovAngle,divs);
+        
+        xMms = focalLengthLocal * 1000 * angles;
+        deflectionEff = zeros(divs,length(pairDeflectionRatioLocal)*length(baseFreq),length(scanSpeedLocal));
+        for speedNum = 1:length(scanSpeedLocal)
+            microSecsLocal = xMms / scanSpeedLocal(speedNum) * 1000;
+            driveParams = MakeDriveParams(GeneratePositionGrid(0), pairDeflectionRatioLocal, scanSpeedLocal(speedNum), baseFreq, focalLengthLocal);
+            deflectionEff(:,:,speedNum) = simulate_aol(microSecsLocal,xyMm, SpecifyPerturbations(-1), driveParams, 4, false );
+        end
+        figure()
+        plot(angles*1000,reshape(deflectionEff,divs,numel(deflectionEff)/divs))
+        legend(cellstr(num2str(scanSpeedLocal'/focalLengthLocal, '%-d')))
+        xlabel('angle')
+        ylabel('eff')
     end
 toc
 end
@@ -85,7 +105,6 @@ function driveParams = MakeDriveParams(xyDef,ratio,speed,optimalBaseFreq,focalLe
     xyDefStretch(2,:) = yDefStretch(:);
     ratioStretch = ratioStretch(:)'; % repeat x numOfSpeedsByDefs
     speedStretch = speedStretch(:)'; % [ speed1 x numOfRatiosByDefs, speed2 x numOfRatiosByDefs, ... ]
-    
     driveParams = aol_drive_params(focalLength, optimalBaseFreq, xyDefStretch, ratioStretch, speedStretch);
 end
 
