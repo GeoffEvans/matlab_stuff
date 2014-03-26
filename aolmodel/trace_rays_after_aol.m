@@ -6,6 +6,7 @@ xyz = rb.GetXyzLeavingAol();
 k = rb.k;
 
 rb.zFocusModel = FindModelFocus(rb.zFocusPredicted, isPointingModeAndSingleBundle);
+fractionalFocusErrorZ = rb.zFocusPredicted/rb.zFocusModel - 1; % output a measure of focus accuracy
 
 rb.xyz{end-2} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(rb.zFocusPredicted));
 rb.xyz{end-1} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(rb.zFocusModel));

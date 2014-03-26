@@ -1,8 +1,11 @@
-function [aodDirectionVectors, aodCentres, zFocusPredicted, aolDrives] = calculate_aol_drive(numOfAods, optimalBaseFreq, xyDeflectionMm, pairDeflectionRatio, scanSpeed)
+function [aodDirectionVectors, aodCentres, zFocusPredicted, aolDrives] = calculate_aol_drive(numOfAods, driveParams)
 % Returns cell aodDirectionVectors; 3,numOfAods aodCentres; numOfAods,numOfDrives chirp; numOfAods,numOfDrives baseFreq}
-if length(optimalBaseFreq) ~= 1
-    error('optimal base freq must be singleton')
-end
+
+optimalBaseFreq = driveParams.optimalBaseFreq;
+xyDeflectionMm = driveParams.xyDeflectionMm;
+pairDeflectionRatio = driveParams.pairDeflectionRatio;
+scanSpeed = driveParams.scanSpeed;
+focalLength = driveParams.focalLength;
 
 widthOfAod = 5e-3;
 correctionDistance = widthOfAod * ( 1 - 1/2.26 );
@@ -17,12 +20,11 @@ switch(numOfAods)
       AodDriveFunction = @Aod2;
 end
 
-[xyDeflectionMm, pairDeflectionRatio, scanSpeed] = GetAllCombinations(xyDeflectionMm, pairDeflectionRatio, scanSpeed);
-[aodDirectionVectors, aodSpacing, chirpFactor, baseFreq] = AodDriveFunction(xyDeflectionMm, pairDeflectionRatio, optimalBaseFreq, scanSpeed);
+[aodDirectionVectors, aodSpacing, chirpFactor, baseFreq] = AodDriveFunction(focalLength, xyDeflectionMm, pairDeflectionRatio, optimalBaseFreq, scanSpeed);
 
 chirp = V*V/lambda * chirpFactor;
 [aodCentres,zFocusPredicted] = CalculateAodCentres(numOfAods,optimalBaseFreq,aodSpacing,aodDirectionVectors); % use optimalBaseFreq because this needs to be fixed over pointing fov.
-aolDrives = aol_drive(baseFreq,chirp);
+aolDrives = aol_drive_freqs(baseFreq,chirp);
 
 
     function [centres,zFocusPredicted] = CalculateAodCentres(numOfAods,optimalBaseFreq,aodSpacing,aodDirectionVectors)
@@ -46,10 +48,11 @@ aolDrives = aol_drive(baseFreq,chirp);
         end
     end
 
-    function [aodDirectionVectors, aodSpacing, chirpFactor, baseFreq] = Aod4(xyDeflectionMm, pairDeflectionRatio, optimalBaseFreq, scanSpeed)
+    function [aodDirectionVectors, aodSpacing, chirpFactor, baseFreq] = Aod4(focalLength, xyDeflectionMm, pairDeflectionRatio, optimalBaseFreq, scanSpeed)
         %aodDirectionVectors = {[0;1], [1;0], -[0;1], -[1;0]};
         aodDirectionVectors = {[1;0], [0;1], -[1;0], -[0;1]};
-        aodSpacing = [5e-2, 5e-2, 5e-2, 2];
+        aodSpacing = [5e-2, 5e-2, 5e-2];
+        aodSpacing = [aodSpacing, sum(aodSpacing)+focalLength];
         
         effctvSpcng = aodSpacing - correctionDistance;
         
@@ -64,13 +67,4 @@ aolDrives = aol_drive(baseFreq,chirp);
         baseFreq = [ sum(effctvSpcng(3:4))/sum(effctvSpcng).*optimalBaseFreq - pairDeflectionRatio.*f3diff;...
             effctvSpcng(4)/sum(effctvSpcng(2:4)).*optimalBaseFreq - pairDeflectionRatio.*f4diff; optimalBaseFreq+f3diff; optimalBaseFreq+f4diff];
     end
-end
-
-function [twoByManyStretched,b,c] = GetAllCombinations(twoByMany,b,c)
-    [b,c] = meshgrid(b,c);
-    b = b(:);
-    c = c(:);
-    twoByManyStretched = stretch(twoByMany,length(b));
-    b = repmat(b,size(twoByMany,2),1)';
-    c = repmat(c,size(twoByMany,2),1)';
 end

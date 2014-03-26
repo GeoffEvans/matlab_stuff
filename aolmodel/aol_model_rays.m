@@ -1,14 +1,14 @@
-function [ rb ] = aol_model( microSecs, xyInputMm, aolPerturbations, xyDeflectionMm, pairDeflectionRatio, optimalBaseFreq, scanSpeed )
+function [ rb ] = aol_model_rays( microSecs, xyInputMm, aolPerturbations, driveParams )
 % Translates a bunch of parameters into rays and propagates them through an
 % AOL, calculating the focal plane if parameters correspond to focusing
 % at one point with a real AOL
    
-    [aodDirectionVectors, aodCentres, zFocusPredicted, aolDrives] = calculate_aol_drive(aolPerturbations.numOfAods, optimalBaseFreq, xyDeflectionMm, pairDeflectionRatio, scanSpeed);
+    [aodDirectionVectors, aodCentres, zFocusPredicted, aolDrives] = calculate_aol_drive(aolPerturbations.numOfAods, driveParams);
     
     rb = aol_ray_bundle(microSecs,xyInputMm,aolDrives,aodCentres,zFocusPredicted,aolPerturbations);    
     PropagateThroughAods(rb);
     
-    isPointingModeAndSingleBundle = (rb.numOfPerturbations * rb.numOfDrives == 1) && (scanSpeed == 0);
+    isPointingModeAndSingleBundle = (rb.numOfPerturbations * rb.numOfDrives == 1) && (driveParams.scanSpeed == 0);
     trace_rays_after_aol(rb, isPointingModeAndSingleBundle);
     
     function rb = PropagateThroughAods(rb)
@@ -100,15 +100,15 @@ function [ rb ] = aol_model( microSecs, xyInputMm, aolPerturbations, xyDeflectio
     end
 end
 
-function [ dispInCrystal, kOutR, eff ] = AodModel( kIn, localFreq )
+function [ dispInCrystal, kOut, eff ] = AodModel( kIn, localFreq )
     numOfRays = numel(localFreq);
-    acPower = 2; % Watts
+    acPower = 1.8; % Watts
     iPolAir = [1; 1i]/sqrt(2); % Circular
     localFreqSquashed = reshape(localFreq,1,numOfRays);
     kInSquashed = reshape(kIn,3,numOfRays);
-    [ dispInCrystalSquashed, kOutRSquashed, effSquashed ] = aod3d.aod_propagator_vector( kInSquashed, ones(1,numOfRays), repmat(iPolAir,1,numOfRays), localFreqSquashed, repmat(acPower,1,numOfRays) );
+    [ dispInCrystalSquashed, kOutSquashed, effSquashed ] = aod3d.aod_propagator_vector( kInSquashed, ones(1,numOfRays), repmat(iPolAir,1,numOfRays), localFreqSquashed, repmat(acPower,1,numOfRays) );
     dispInCrystal = reshape(dispInCrystalSquashed, size(kIn));
-    kOutR = reshape(kOutRSquashed, size(kIn));
+    kOut = reshape(kOutSquashed, size(kIn));
     eff = reshape(effSquashed, size(localFreq));
 end
 

@@ -30,7 +30,7 @@ PlotOverallEfficiency();
         ylabel('acoustic freq / MHz')
         zlabel('efficiency')
         grid on;
-        grid minor;
+        colorbar;
         axis square;
     end
 end

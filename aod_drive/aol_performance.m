@@ -12,12 +12,12 @@ end
     function [wavelengthVac, acPower, iPolAir, V] = AolConstants()
         acPower = 2; % Watts
         iPolAir = [1; 1i]/sqrt(2);
-        V = 613;
+        V = teo2.find_v_ac_min(pi/2,pi/4);
         wavelengthVac = aod3d.opWavelenVac;
     end
 
     function [numOfAods, aodDirectionVectors, zPlanesAod, chirp, constFreq, aodCentre] = AolDrive(theta, xDeflection, yDeflection, pairDeflectionRatio, optConstFreq)
-        correctionDistance = aod3d.L * ( 1 - 1/2.26 );
+        correctionDistance = 5e-3 * ( 1 - 1/2.26 );
         numOfAods = size(theta,2);
         if numOfAods == 4
             [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflection, yDeflection, pairDeflectionRatio, optConstFreq);
@@ -41,31 +41,22 @@ end
             aodCentre(:,n) = wavelengthVac/V * accumulator;
         end
         
-        function [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod4(xDeflectMils, yDeflectMils, pairDeflectionRatio, optConstFreq)
+        function [aodDirectionVectors, aodL, chirpFactor, baseFreq] = Aod4(xDeflectMils, yDeflectMils, pairDeflectionRatio, optimalBaseFreq)
             %aodDirectionVectors = {[0;1], [1;0], -[0;1], -[1;0]};
             aodDirectionVectors = {[1;0], [0;1], -[1;0], -[0;1]};
             aodL = [5e-2, 5e-2, 5e-2, 2];
             
-            l1 = aodL(1) - correctionDistance;
-            l2 = aodL(2) - correctionDistance;
-            l3 = aodL(3) - correctionDistance;
-            l4 = aodL(4) - correctionDistance;
-            chirpFactor = [ 1/(l1 + l2 + 2*l3 + 2*l4)...
-                1/(l2 + l3 + 2*l4)...
-                1/(2*(l3 + l4))...
-                1/(2*l4)];
+            effctvSpcng = aodL - correctionDistance;
             
             A = scanSpeed / V;
-            chirpFactor = [(1 + A)/(l1 + l2 + 2*l3 + 2*l4 + A*l1 + A*l2)...
-                            1/(l2 + l3 + 2*l4)...
-                        (1 - A)/(2*(l3 + l4))...
-                                      1/(2*l4)];
-            f3diff = - V/wavelengthVac * xDeflectMils * 1e-3 ./ (pairDeflectionRatio * sum(aodL) + sum(aodL(3:4)));
-            f4diff = - V/wavelengthVac * yDeflectMils * 1e-3 ./ (pairDeflectionRatio * sum(aodL(2:4)) + aodL(4));
-            constFreq = [ sum(aodL(3:4))/sum(aodL)*optConstFreq - pairDeflectionRatio*f3diff;...
-                            aodL(4)/sum(aodL(2:4))*optConstFreq - pairDeflectionRatio*f4diff;...
-                            optConstFreq+f3diff;...
-                            optConstFreq+f4diff];
+            chirpFactor = [(1 + A)/(effctvSpcng(1) + effctvSpcng(2) + 2*effctvSpcng(3) + 2*effctvSpcng(4) + A*effctvSpcng(1) + A*effctvSpcng(2))...
+                1/(effctvSpcng(2) + effctvSpcng(3) + 2*effctvSpcng(4))...
+                (1 - A)/(2*(effctvSpcng(3) + effctvSpcng(4)))...
+                1/(2*effctvSpcng(4))];
+            f3diff = - V/wavelengthVac .* xDeflectMils .* 1e-3 ./ (pairDeflectionRatio .* sum(effctvSpcng) + sum(effctvSpcng(3:4)));
+            f4diff = - V/wavelengthVac .* yDeflectMils .* 1e-3 ./ (pairDeflectionRatio .* sum(effctvSpcng(2:4)) + effctvSpcng(4));
+            baseFreq = [ sum(effctvSpcng(3:4))/sum(effctvSpcng).*optimalBaseFreq - pairDeflectionRatio.*f3diff;...
+                effctvSpcng(4)/sum(effctvSpcng(2:4)).*optimalBaseFreq - pairDeflectionRatio.*f4diff; optimalBaseFreq+f3diff; optimalBaseFreq+f4diff];
         end
         function [aodDirectionVectors, aodL, chirpFactor, constFreq] = Aod2(xDeflectMils, pairDeflectionRatio, optConstFreq)
             aodDirectionVectors = {[1;0], -[1;0]};
@@ -158,7 +149,6 @@ end
                 end
                 
                 function [theta,phi] = CalculateBraggRotationAngles(k,unitK2d,freq)
-                    V = 613;
                     unitK = [unitK2d;0];
                     unitKarr = repmat(unitK,1,numOfRays);
                     zxK = cross([0;0;1],unitK);
@@ -259,7 +249,6 @@ end
                     plot3(x(:,indicesForQthPerturbation),y(:,indicesForQthPerturbation),z(:,indicesForQthPerturbation),'r');
                 end
                 grid on;
-                grid minor;
                 axis square;
                 xlabel('x')
                 ylabel('y')

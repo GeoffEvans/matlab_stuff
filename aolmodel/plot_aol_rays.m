@@ -25,12 +25,12 @@ function plot_aol_rays(rb)
     fill3([max(x(:)) max(x(:)) min(x(:)) min(x(:))],[max(y(:)) min(y(:)) min(y(:)) max(y(:))], zValAsArray, zValAsArray);
     alpha(0.1)
 
-    rayEffs = squeeze(prod(rb.eff,1));
-    maxEffPlot = max(rayEffs(:))
+    rayEffs = prod(rb.eff,1);
+    maxEffPlot = max(rayEffs(:)) % output a reference for comparing ray colours
     normEff = rayEffs/maxEffPlot;
-    for pertNum = 1:numel(x(1,1,:))
-        for rayNum = 1:numel(x(1,:,1))
-            colorElem = normEff(rayNum,pertNum);
+    for pertNum = 1:rb.numOfPerturbations
+        for rayNum = 1:rb.numOfRaysPerPerturbation
+            colorElem = normEff(1,rayNum,pertNum);
             p = plot3(x(:,rayNum,pertNum),y(:,rayNum,pertNum),z(:,rayNum,pertNum));
             set(p, 'Color', [colorElem,0,1-colorElem]);
         end

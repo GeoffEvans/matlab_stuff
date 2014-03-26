@@ -92,8 +92,7 @@ classdef aol_ray_bundle < handle
         
         function vectorsOut = ApplyPerturbationMatricesToVectors(obj, MapPerturbationToMatrix, vectorsIn, nthAod)
             vectorsOut = zeros(size(vectorsIn));
-            phiPerturbs = obj.perturbations.GetPerturbationsForAod(nthAod);
-            thetaPerturbs = obj.perturbations.GetPerturbationsForAod(nthAod);
+            [thetaPerturbs,phiPerturbs] = obj.perturbations.GetPerturbationsForAod(nthAod);
             for m = 1:obj.numOfPerturbations
                 vectorsOut(:,:,m) = MapPerturbationToMatrix(nthAod,thetaPerturbs(m),phiPerturbs(m)) * vectorsIn(:,:,m);
             end
