@@ -7,7 +7,7 @@ xVel = 00;
 yVel = 00;
 focusDeviation = -0.000;
 
-[aodAcDirectionVectors, aodL, chirpFactor] = Aod6pairedASscan();
+[aodAcDirectionVectors, aodL, chirpFactor] = Aod6cycdoub0();
 
 tic
 [xy,~] = CalculateRayEnds();
@@ -85,7 +85,7 @@ ylabel('y')
                                   1/(2*l4)];
     end
 
-    function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedT()
+    function [aodDirectionVectors, aodL, chirpFactor] = Aod6cycdoub0()
         aodDirectionVectors = {[1;0], [-1;0], [1;sqrt(3)]/2, -[1;sqrt(3)]/2, [-1;sqrt(3)]/2, -[-1;sqrt(3)]/2};
         aodL = [5, 5, 5 ,5 ,5 , 5e0];
         L = aodL(1);
@@ -96,8 +96,9 @@ ylabel('y')
                                (16*L + 8*f)/(34*L^2 + 42*L*f + 12*f^2)...
                                    (10*L + 4*f)/((L + f)*(13*L + 6*f))...
                                                                      0];
+
     end
-    function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedS()
+    function [aodDirectionVectors, aodL, chirpFactor] = Aod6cycdoub1()
         aodDirectionVectors = {[1;0], [-1;0], [1;sqrt(3)]/2, -[1;sqrt(3)]/2, [-1;sqrt(3)]/2, -[-1;sqrt(3)]/2};
         aodL = [5, 5, 5 ,5 ,5 , 5e0];
         L = aodL(1);
@@ -109,7 +110,7 @@ ylabel('y')
                                           (14*L + 4*f)/(((2*L)/3 + f)*(26*L + 12*f))...
                                                                              1/(3*f)];
     end
-    function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedAT()
+    function [aodDirectionVectors, aodL, chirpFactor] = Aod6intertrip0()
         aodDirectionVectors = {[1;0], [-1;0], -[1;sqrt(3)]/2, [1;sqrt(3)]/2, [-1;sqrt(3)]/2, -[-1;sqrt(3)]/2};
         aodL = [5, 5, 5 ,5 ,5 , 5e0];
         L = aodL(1);
@@ -121,7 +122,7 @@ ylabel('y')
                                         (20*L + 8*f)/((L + f)*(22*L + 12*f))...
                                                                            0];
     end
-    function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedAS()
+    function [aodDirectionVectors, aodL, chirpFactor] = Aod6intertrip1()
         aodDirectionVectors = {[1;0], [-1;0], -[1;sqrt(3)]/2, [1;sqrt(3)]/2, [-1;sqrt(3)]/2, -[-1;sqrt(3)]/2};
         aodL = [5, 5, 5 ,5 ,5 , 5e0];
         L = aodL(1);
@@ -133,7 +134,7 @@ ylabel('y')
                                      ((38*L)/3 + 4*f)/(((2*L)/3 + f)*(22*L + 12*f))...
                                                                             1/(3*f)];
     end
-    function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedASscan()
+    function [aodDirectionVectors, aodL, chirpFactor] = Aod6intertrip1scan()
         aodDirectionVectors = {[1;0], [-1;0], -[1;-sqrt(3)]/2, [1;-sqrt(3)]/2, -[1;sqrt(3)]/2, [1;sqrt(3)]/2};
         aodL = [5, 5, 5 ,5 ,5 , 5e1];
         L = aodL(1);
