@@ -102,7 +102,7 @@ end
 
 function [ dispInCrystal, kOut, eff ] = AodModel( kIn, localFreq )
     numOfRays = numel(localFreq);
-    acPower = 1.8; % Watts
+    acPower = 0.9; % Watts
     iPolAir = [1; 1i]/sqrt(2); % Circular
     localFreqSquashed = reshape(localFreq,1,numOfRays);
     kInSquashed = reshape(kIn,3,numOfRays);

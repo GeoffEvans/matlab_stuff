@@ -1,26 +1,25 @@
 function [ opt ] = optimise_aod_orientation()
 tic
 
-microSecs = -4:4:4;
-xyMm = GeneratePositionGrid(-5:5:5);
+microSecs = -4:2:4;
+xyMm = GeneratePositionGrid(-5:2:5);
 xyDeflectMm = GeneratePositionGrid(0);
-pairDeflectionRatio = 1;
+pairDeflectionRatio = 20;
 baseFreq = 40e6;
 scanSpeed = 0;
 focalLength = 2;
-
 aolPerturbations = SpecifyPerturbations(-1);
 
 %opt = Simple4();
 
 %opt = OptimiseAngles4();
 
-%PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
-PlotFovEfficiencyScanning(1,focalLength,[200,600,1400,2000,3000,4000,5000]);
+PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
+%PlotFovEfficiencyScanning(1,focalLength,[200,600,1400,2000,3000,4000,5000]);
 
     function [eff] = Simple4()
         driveParams = MakeDriveParams(xyDeflectMm, pairDeflectionRatio, scanSpeed, baseFreq, focalLength);
-        eff = simulate_aol(microSecs,xyMm, aolPerturbations, driveParams, 4, true );
+        eff = plot_and_analyse_aol(microSecs,xyMm, aolPerturbations, driveParams, 4, true );
         if numel(eff) > 200
             display('more than 200 effs, returning max only')
             eff = max(eff(:));
@@ -36,7 +35,7 @@ PlotFovEfficiencyScanning(1,focalLength,[200,600,1400,2000,3000,4000,5000]);
             t(nthAod) = opt(1);
             p(nthAod) = opt(2);
         end
-        eff = simulate_aol(microSecs,xyMm, aol_perturbations(t,p), driveParamsForOptimising, 4, true );
+        eff = plot_and_analyse_aol(microSecs,xyMm, aol_perturbations(t,p), driveParamsForOptimising, 4, true );
         opt = [eff,t,p];
         
         function [opt] = FindOptimalPerturbation(n,tTest,pTest)
@@ -46,19 +45,19 @@ PlotFovEfficiencyScanning(1,focalLength,[200,600,1400,2000,3000,4000,5000]);
             function val = MinFun(v)
                 tTest(n) = v(1);
                 pTest(n) = v(2);
-                val = -simulate_aol(microSecs,xyMm, aol_perturbations(tTest,pTest), driveParamsForOptimising, n, false );
+                val = -plot_and_analyse_aol(microSecs,xyMm, aol_perturbations(tTest,pTest), driveParamsForOptimising, n, false );
             end
         end
     end
 
     function PlotFovEfficiencyPointing(pairDeflectionRatioLocal, focalLengthLocal)
         fovAngle = 36e-3;
-        divs = 10;
+        divs = 11;
         fovMm = focalLengthLocal * 1000 * fovAngle;
         [xDeflectMmLocal,yDeflectMmLocal] = meshgrid(linspace(-fovMm/2,fovMm/2,divs));
         xyDeflectMmLocal = [xDeflectMmLocal(:)'; yDeflectMmLocal(:)'];
         driveParams = MakeDriveParams(xyDeflectMmLocal, pairDeflectionRatioLocal, 0, baseFreq, focalLengthLocal);
-        deflectionEff = simulate_aol(microSecs,xyMm, SpecifyPerturbations(-1), driveParams, 4, true );
+        deflectionEff = plot_and_analyse_aol(microSecs,xyMm, SpecifyPerturbations(-1), driveParams, 4, true );
         figure();
         contour(xDeflectMmLocal/focalLengthLocal,yDeflectMmLocal/focalLengthLocal,reshape(deflectionEff,divs,divs));
         colorbar;
@@ -77,7 +76,7 @@ PlotFovEfficiencyScanning(1,focalLength,[200,600,1400,2000,3000,4000,5000]);
         for speedNum = 1:length(scanSpeedLocal)
             microSecsLocal = xMms / scanSpeedLocal(speedNum) * 1000;
             driveParams = MakeDriveParams(GeneratePositionGrid(0), pairDeflectionRatioLocal, scanSpeedLocal(speedNum), baseFreq, focalLengthLocal);
-            deflectionEff(:,:,speedNum) = simulate_aol(microSecsLocal,xyMm, SpecifyPerturbations(-1), driveParams, 4, false );
+            deflectionEff(:,:,speedNum) = plot_and_analyse_aol(microSecsLocal,xyMm, SpecifyPerturbations(-1), driveParams, 4, false );
         end
         figure()
         plot(angles*1000,reshape(deflectionEff,divs,numel(deflectionEff)/divs))
