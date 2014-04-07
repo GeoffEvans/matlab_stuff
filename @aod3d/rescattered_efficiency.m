@@ -1,4 +1,4 @@
-function [eff, dTheta, dPhi] = rescattered_efficiency( iTheta, iPhi, acFreq, acTheta, acPower )
+function [eff, dTheta, dPhi] = rescattered_efficiency( iTheta, iPhi, acFreq, acTheta, acPower, transducerLength )
 % Finds the diffracted beam efficiency for given incident angles and acoustic frequencies.
 
 [effPrimary, dTheta, dPhi] = Efficiency( iTheta, iPhi );
@@ -8,7 +8,7 @@ eff = effPrimary .* (1 - effSecondary);
     function [eff, dTheta, dPhi] = Efficiency( iTheta, iPhi )
     % Finds the diffracted beam efficiency for given incident angles and acoustic frequencies.
 
-    L = aod3d.L;
+    L = transducerLength;
     H = 20e-3;
     opWavelenVac = aod3d.opWavelenVac;
     acPhi = pi/4 + 0*acTheta;

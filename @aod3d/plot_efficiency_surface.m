@@ -15,7 +15,9 @@ iInten = 1;
 iPolAir = [1; 1i]/sqrt(2) * arrayLength;
 acTheta = pi/2 * arrayLength;
 acPower = 1.8;
-[~,~,~,dIntensity, dPol] = aod3d.aod_propagator(iThetaAir, iPhi , iInten, iPolAir, acFreq, acTheta, acPower );
+transducerWidth = 1.8e-3;
+
+[~,~,~,dIntensity, dPol] = aod3d.aod_propagator(iThetaAir, iPhi , iInten, iPolAir, acFreq, acTheta, acPower, transducerWidth );
 toc
 
 PlotOverallEfficiency();

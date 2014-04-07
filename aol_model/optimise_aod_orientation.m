@@ -1,25 +1,26 @@
 function [ opt ] = optimise_aod_orientation()
 tic
 
-microSecs = -4:2:4;
-xyMm = GeneratePositionGrid(-5:2:5);
+microSecs = -4:4:4;
+xyMm = GeneratePositionGrid(-5:5:5);
 xyDeflectMm = GeneratePositionGrid(0);
-pairDeflectionRatio = 20;
+pairDeflectionRatio = 1;
 baseFreq = 40e6;
 scanSpeed = 0;
 focalLength = 2;
 aolPerturbations = SpecifyPerturbations(-1);
+transducerWidths = [3.6 3.6 1.8 1.8] * 1e-3;
 
 %opt = Simple4();
 
 %opt = OptimiseAngles4();
 
 PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
-%PlotFovEfficiencyScanning(1,focalLength,[200,600,1400,2000,3000,4000,5000]);
+%PlotFovEfficiencyScanning(0,focalLength,[200,600,1400,2000,3000,4000,5000]);
 
     function [eff] = Simple4()
         driveParams = MakeDriveParams(xyDeflectMm, pairDeflectionRatio, scanSpeed, baseFreq, focalLength);
-        eff = plot_and_analyse_aol(microSecs,xyMm, aolPerturbations, driveParams, 4, true );
+        eff = plot_and_analyse_aol(microSecs,xyMm, aolPerturbations, driveParams, 4, transducerWidths, true );
         if numel(eff) > 200
             display('more than 200 effs, returning max only')
             eff = max(eff(:));
@@ -35,7 +36,7 @@ PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
             t(nthAod) = opt(1);
             p(nthAod) = opt(2);
         end
-        eff = plot_and_analyse_aol(microSecs,xyMm, aol_perturbations(t,p), driveParamsForOptimising, 4, true );
+        eff = plot_and_analyse_aol(microSecs,xyMm, aol_perturbations(t,p), driveParamsForOptimising, 4, transducerWidths, true );
         opt = [eff,t,p];
         
         function [opt] = FindOptimalPerturbation(n,tTest,pTest)
@@ -45,7 +46,7 @@ PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
             function val = MinFun(v)
                 tTest(n) = v(1);
                 pTest(n) = v(2);
-                val = -plot_and_analyse_aol(microSecs,xyMm, aol_perturbations(tTest,pTest), driveParamsForOptimising, n, false );
+                val = -plot_and_analyse_aol(microSecs,xyMm, aol_perturbations(tTest,pTest), driveParamsForOptimising, n, transducerWidths, false );
             end
         end
     end
@@ -57,7 +58,7 @@ PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
         [xDeflectMmLocal,yDeflectMmLocal] = meshgrid(linspace(-fovMm/2,fovMm/2,divs));
         xyDeflectMmLocal = [xDeflectMmLocal(:)'; yDeflectMmLocal(:)'];
         driveParams = MakeDriveParams(xyDeflectMmLocal, pairDeflectionRatioLocal, 0, baseFreq, focalLengthLocal);
-        deflectionEff = plot_and_analyse_aol(microSecs,xyMm, SpecifyPerturbations(-1), driveParams, 4, true );
+        deflectionEff = plot_and_analyse_aol(microSecs,xyMm, SpecifyPerturbations(-1), driveParams, 4, transducerWidths, true );
         figure();
         contour(xDeflectMmLocal/focalLengthLocal,yDeflectMmLocal/focalLengthLocal,reshape(deflectionEff,divs,divs));
         colorbar;
@@ -76,7 +77,7 @@ PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
         for speedNum = 1:length(scanSpeedLocal)
             microSecsLocal = xMms / scanSpeedLocal(speedNum) * 1000;
             driveParams = MakeDriveParams(GeneratePositionGrid(0), pairDeflectionRatioLocal, scanSpeedLocal(speedNum), baseFreq, focalLengthLocal);
-            deflectionEff(:,:,speedNum) = plot_and_analyse_aol(microSecsLocal,xyMm, SpecifyPerturbations(-1), driveParams, 4, false );
+            deflectionEff(:,:,speedNum) = plot_and_analyse_aol(microSecsLocal,xyMm, SpecifyPerturbations(-1), driveParams, 4, transducerWidths, false );
         end
         figure()
         plot(angles*1000,reshape(deflectionEff,divs,numel(deflectionEff)/divs))
@@ -98,13 +99,13 @@ end
 
 function driveParams = MakeDriveParams(xyDef,ratio,speed,optimalBaseFreq,focalLength)
     % returns arrays of horizontal form pure stretch on speed, pure repeat on ratio
-    [xDefStretch,ratioStretch,speedStretch] = meshgrid(xyDef(1,:),ratio,speed);
+    [xDefStretch,ratioStretched,speedStretched] = meshgrid(xyDef(1,:),ratio,speed);
     [yDefStretch,~,~] = meshgrid(xyDef(2,:),ratio,speed);
-    xyDefStretch(1,:) = xDefStretch(:); % [ def1 x numOfRatios, def2 x numOfRatios, ...] x numOfSpeeds
-    xyDefStretch(2,:) = yDefStretch(:);
-    ratioStretch = ratioStretch(:)'; % repeat x numOfSpeedsByDefs
-    speedStretch = speedStretch(:)'; % [ speed1 x numOfRatiosByDefs, speed2 x numOfRatiosByDefs, ... ]
-    driveParams = aol_drive_params(focalLength, optimalBaseFreq, xyDefStretch, ratioStretch, speedStretch);
+    xyDefStretched(1,:) = xDefStretch(:); % [ def1 x numOfRatios, def2 x numOfRatios, ...] x numOfSpeeds
+    xyDefStretched(2,:) = yDefStretch(:);
+    ratioStretched = ratioStretched(:)'; % repeat x numOfSpeedsByDefs
+    speedStretched = speedStretched(:)'; % [ speed1 x numOfRatiosByDefs, speed2 x numOfRatiosByDefs, ... ]
+    driveParams = aol_drive_params(focalLength, optimalBaseFreq, xyDefStretched, ratioStretched, speedStretched);
 end
 
 function aolPerturbations = SpecifyPerturbations(id)

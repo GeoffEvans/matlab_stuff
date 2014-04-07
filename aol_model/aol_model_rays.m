@@ -1,4 +1,4 @@
-function [ rb ] = aol_model_rays( microSecs, xyInputMm, aolPerturbations, driveParams )
+function [ rb ] = aol_model_rays( microSecs, xyInputMm, aolPerturbations, driveParams, transducerWidths )
 % Translates a bunch of parameters into rays and propagates them through an
 % AOL, calculating the focal plane if parameters correspond to focusing
 % at one point with a real AOL
@@ -35,7 +35,7 @@ function [ rb ] = aol_model_rays( microSecs, xyInputMm, aolPerturbations, driveP
             localFreq = FindLocalFreq(nthAod, rb);
 
             kInCf = TransformToPerturbedCrystalFrame(rb.k, nthAod, rb);
-            [ displacementInCrystalCf, kOutCf, rb.eff(nthAod,:,:) ] = AodModel( kInCf, localFreq );
+            [ displacementInCrystalCf, kOutCf, rb.eff(nthAod,:,:) ] = AodModel( kInCf, localFreq, transducerWidths(nthAod) );
             rb.k = TransformOutOfPerturbedCrystalFrame(kOutCf, nthAod, rb);
             
             displacementInCrystal = TransformOutOfPerturbedCrystalFrame(displacementInCrystalCf,nthAod,rb);
@@ -100,13 +100,13 @@ function [ rb ] = aol_model_rays( microSecs, xyInputMm, aolPerturbations, driveP
     end
 end
 
-function [ dispInCrystal, kOut, eff ] = AodModel( kIn, localFreq )
+function [ dispInCrystal, kOut, eff ] = AodModel( kIn, localFreq, transducerWidth )
     numOfRays = numel(localFreq);
     acPower = 0.9; % Watts
     iPolAir = [1; 1i]/sqrt(2); % Circular
     localFreqSquashed = reshape(localFreq,1,numOfRays);
     kInSquashed = reshape(kIn,3,numOfRays);
-    [ dispInCrystalSquashed, kOutSquashed, effSquashed ] = aod3d.aod_propagator_vector( kInSquashed, ones(1,numOfRays), repmat(iPolAir,1,numOfRays), localFreqSquashed, repmat(acPower,1,numOfRays) );
+    [ dispInCrystalSquashed, kOutSquashed, effSquashed ] = aod3d.aod_propagator_vector( kInSquashed, ones(1,numOfRays), repmat(iPolAir,1,numOfRays), localFreqSquashed, repmat(acPower,1,numOfRays), transducerWidth );
     dispInCrystal = reshape(dispInCrystalSquashed, size(kIn));
     kOut = reshape(kOutSquashed, size(kIn));
     eff = reshape(effSquashed, size(localFreq));

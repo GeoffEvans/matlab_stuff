@@ -1,10 +1,10 @@
 function plot_efficiency_power_freq()
 
-acFreqMax = 100e6;
+acFreqMax = 80e6;
 acFreqMin = 20e6;
-range = 0:80;
+range = 0:40;
 acFreqRange = range/max(range)*(acFreqMax-acFreqMin) + acFreqMin;
-acPowerRange = 0.2:0.1:30;
+acPowerRange = 0.2:0.2:30;
 [acFreq ,acPower ] = aod3d.SetCrossProduct( acFreqRange, acPowerRange);
 
 tic
@@ -14,7 +14,9 @@ iPhi = -3*pi/4 * arrayLength;
 iInten = 1;
 iPolAir = [1; 1i]/sqrt(2) * arrayLength;
 acTheta = pi/2 * arrayLength;
-[ ~,dThetaAir, dPhi, dInten, dPol ] = aod3d.aod_propagator( iThetaAir, iPhi, iInten, iPolAir, acFreq, acTheta, acPower );
+transducerWidth = 1.8e-3;
+
+[ ~,dThetaAir, dPhi, dInten, dPol ] = aod3d.aod_propagator( iThetaAir, iPhi, iInten, iPolAir, acFreq, acTheta, acPower, transducerWidth );
 toc
 
 figure();

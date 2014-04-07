@@ -1,15 +1,14 @@
 classdef aod3d
     
     properties (Constant)
-        L = 1.8e-3; % transducer length
         opWavelenVac = 800e-9;
     end
     
     methods (Static)        % Externally defined
         [ dTheta, dPhi, phaseOffset ] =         match_phase( iTheta, iPhi, acFreq, acTheta )
-        [eff, dTheta, dPhi] =                   rescattered_efficiency( iTheta, iPhi, acFreq, acTheta, acPower )
-        [dispVec,dThetaAir,dPhi,dInten,dPol] =  aod_propagator( iThetaAir, iPhi, iInten, iPolAir, acFreq, acTheta, acPower )
-        [dispVec,dWavevectorAir,dInten,dPol ] = aod_propagator_vector( iWavevectorAir, iInten, iPolAir, acFreq, acPower )
+        [eff, dTheta, dPhi] =                   rescattered_efficiency( iTheta, iPhi, acFreq, acTheta, acPower, transducerLength )
+        [dispVec,dThetaAir,dPhi,dInten,dPol] =  aod_propagator( iThetaAir, iPhi, iInten, iPolAir, acFreq, acTheta, acPower, transducerLength )
+        [dispVec,dWavevectorAir,dInten,dPol ] = aod_propagator_vector( iWavevectorAir, iInten, iPolAir, acFreq, acPower, transducerLength )
                                                 plot_efficiency_surface()
                                                 plot_phase_surface()
                                                 plot_diffraction_angles_surface()
