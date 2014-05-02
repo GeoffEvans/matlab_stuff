@@ -7,7 +7,7 @@ pairDeflectionRatio = driveParams.pairDeflectionRatio;
 scanSpeed = driveParams.scanSpeed;
 focalLength = driveParams.focalLength;
 
-widthOfAod = 5e-3;
+widthOfAod = 8e-3;
 correctionDistance = widthOfAod * ( 1 - 1/2.26 );
 V = teo2.find_v_ac_min(pi/2,pi/4);
 lambda = aod3d.opWavelenVac;
