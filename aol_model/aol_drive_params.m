@@ -12,7 +12,7 @@ classdef aol_drive_params
     
     methods
         function obj = aol_drive_params(focalLength, optimalBaseFreq, xyDeflectionMm, pairDeflectionRatio, scanSpeed)
-            if length(focalLength) * length(optimalBaseFreq) ~= 1
+            if numel(focalLength) * numel(optimalBaseFreq) ~= 1
                 error('only allow scalar focalLength and optimalBaseFreq')
             end
             if sum(size(scanSpeed) ~= size(pairDeflectionRatio)) &&  size(xyDeflectionMm,2) ~= size(pairDeflectionRatio,2)

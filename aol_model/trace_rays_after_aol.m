@@ -5,8 +5,7 @@ normalToPlane = repmat([0; 0; 1],enlargementArray);
 xyz = rb.GetXyzLeavingAol();
 k = rb.k;
 
-rb.zFocusModel = FindModelFocus(rb.zFocusPredicted, isPointingModeAndSingleBundle);
-fractionalFocusErrorZ = rb.zFocusPredicted/rb.zFocusModel - 1; % output a measure of focus accuracy
+[rb.zFocusModel, rb.xyFocusModel] = FindModelFocus(rb.zFocusPredicted, isPointingModeAndSingleBundle);
 
 rb.xyz{end-2} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(rb.zFocusPredicted));
 rb.xyz{end-1} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(rb.zFocusModel));
@@ -16,12 +15,15 @@ rb.xyz{end} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(rb.zFocusPredi
         point = repmat([0 0 zVal]',enlargementArray);
     end
 
-    function focus = FindModelFocus(zFocusExpected, isPointingModeAndSingleBundle)
-        focus = zFocusExpected;
+    function [zFocus, xyFocus] = FindModelFocus(zFocusExpected, isPointingModeAndSingleBundle)
+        zFocus = zFocusExpected;
         
         if isPointingModeAndSingleBundle == true
-            focus = fminsearch(@MinFunc,zFocusExpected);
+            zFocus = fminsearch(@MinFunc,zFocusExpected);
         end
+        
+        xyzFocus = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(zFocus));
+        xyFocus = [mean(xyzFocus(1,:)), mean(xyzFocus(2,:))];
         
         function val = MinFunc(zVal)
             xyzTemp = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(zVal));

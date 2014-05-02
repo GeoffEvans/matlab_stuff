@@ -16,6 +16,7 @@ classdef aol_ray_bundle < handle
         k
         xyz
         
+        xyFocusModel
         zFocusModel
         zFocusPredicted
         
