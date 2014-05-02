@@ -34,7 +34,7 @@ daq_clock = 200e6;%%%%%%%%%%H
 %dataclock_sys = (sysclk/25e6)/sysclk
 %dataclock_daq = (daq_clock/25e6)/daq_clock
 dataclock_sys = (sysclk/20e6)/sysclk; % This is modified to match 240MHz Clock rate
-%dataclock_daq = (daq_clock/20e6)/daq_clock; % This is modified to match 240MHz Clock rate
+dataclock_daq = (daq_clock/20e6)/daq_clock; % This is modified to match 240MHz Clock rate
 
 
 if (dataclock_sys == dataclock_daq)
@@ -289,7 +289,7 @@ for k=1:NDV; % for each dwell voxel
     % AOD X1 correct I think 150408
     fdeflect(2)=mode*2*d4app/(2*d4app+d3app+d2app)*(Ynp(k)+skewZY.*Znp(k))*Deltafmax;% AOD Y1 correct I think 150408
     fdeflect(3)=mode* d4app/(d4app+d3app)*(Xnp(k)+skewZX.*Znp(k))*Deltafmax;% AOD X2 correct I think 150408%minus
-    fdeflect(4)=-mode* (Ynp(k)+skewZY.*Znp(k))*Deltafmax;% AOD Y2 correct I think 150408
+    fdeflect(4)=-mode* Ynp(k)*Deltafmax;% AOD Y2 correct I think 150408
     
     %NEW
     %AOD1 = X1 AOD2=Y1 AOD3 = X2 AOD4 = Y2 -- change the index for record
