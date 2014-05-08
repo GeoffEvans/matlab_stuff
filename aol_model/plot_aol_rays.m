@@ -1,7 +1,7 @@
 function plot_aol_rays(rb)
 
     numOfAods = rb.numOfAods;
-    zPlanesAod = rb.aodCentres(3,:);
+    zPlanesAod = cellfun(@(x) x(3,1), rb.aodCentres);
     numOfZPlanes = length(rb.xyz);
     x = zeros(numOfZPlanes,rb.numOfRaysPerPerturbation,rb.numOfPerturbations);
     y = zeros(numOfZPlanes,rb.numOfRaysPerPerturbation,rb.numOfPerturbations);

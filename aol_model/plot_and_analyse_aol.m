@@ -6,7 +6,7 @@ if plotRays
    plot_aol_rays(rayBundle);
 end
 
-[ eff ] = aol_analysis( rayBundle, numAodsToOptimize, driveParams.scanSpeed );
+[ eff ] = aol_analysis( rayBundle, numAodsToOptimize, driveParams.scanSpeed, driveParams.xyDeflectionMm * 1e-3 );
  
 end
 

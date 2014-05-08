@@ -3,28 +3,24 @@ tic
 
 microSecs = -4:4:4;
 xyMm = GeneratePositionGrid(-5:5:5);
-xyDeflectMm = GeneratePositionGrid(0);
+xyDeflectMm = GeneratePositionGrid(-10);
 pairDeflectionRatio = 1;
 baseFreq = 40e6;
 scanSpeed = 0;
-focalLength = 2;
+focalLength = 1;
 aolPerturbations = SpecifyPerturbations(-1);
 transducerWidths = [3.6 3.6 1.8 1.8] * 1e-3;
-
-%opt = Simple4();
+   
+opt = Simple4();
 
 %opt = OptimiseAngles4();
 
-PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
+%PlotFovEfficiencyPointing(pairDeflectionRatio,focalLength);
 %PlotFovEfficiencyScanning(0,focalLength,[200,600,1400,2000,3000,4000,5000]);
 
     function [eff] = Simple4()
         driveParams = MakeDriveParams(xyDeflectMm, pairDeflectionRatio, scanSpeed, baseFreq, focalLength);
         eff = plot_and_analyse_aol(microSecs,xyMm, aolPerturbations, driveParams, 4, transducerWidths, true );
-        if numel(eff) > 200
-            display('more than 200 effs, returning max only')
-            eff = max(eff(:));
-        end
     end
 
     function [opt] = OptimiseAngles4()

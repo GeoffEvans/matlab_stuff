@@ -23,7 +23,7 @@ rb.xyz{end} = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(rb.zFocusPredi
         end
         
         xyzFocus = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(zFocus));
-        xyFocus = [mean(xyzFocus(1,:)), mean(xyzFocus(2,:))];
+        xyFocus = [mean(xyzFocus(1,:)); mean(xyzFocus(2,:))];
         
         function val = MinFunc(zVal)
             xyzTemp = propagate_ray_to_plane(xyz,k,normalToPlane,PointAtZ(zVal));

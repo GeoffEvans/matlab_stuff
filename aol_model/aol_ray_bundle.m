@@ -56,8 +56,8 @@ classdef aol_ray_bundle < handle
             obj.xyz{1} = obj.StretchPositionArray(xyzInitial);
             
             obj.zFocusPredicted = zFocusPredicted;
-            obj.aodCentres = aodCentres;
             obj.drives = obj.StretchDrives(drives);
+            obj.aodCentres = cellfun(@obj.StretchDrives, aodCentres, 'UniformOutput', 0); % one centre for each drive (pairDefRat and xyDef)
             obj.perturbations = aolPerturbs;
         end
         
@@ -97,11 +97,6 @@ classdef aol_ray_bundle < handle
             for m = 1:obj.numOfPerturbations
                 vectorsOut(:,:,m) = MapPerturbationToMatrix(nthAod,thetaPerturbs(m),phiPerturbs(m)) * vectorsIn(:,:,m);
             end
-        end
-        
-        function centres = AodCentreForEachRay(obj,nthAod)
-            centreForAod = obj.aodCentres(:,nthAod);
-            centres = repmat(centreForAod,[1,obj.numOfRaysPerPerturbation,obj.numOfPerturbations]);
         end
     end
     methods (Access = private)

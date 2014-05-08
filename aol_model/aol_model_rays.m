@@ -20,7 +20,7 @@ function [ rb ] = aol_model_rays( microSecs, xyInputMm, aolPerturbations, driveP
         
         function PropagateToAod(aodNumber,rb)
             unitNormalToAod = GetUnitNormalToAod(aodNumber,rb);
-            aodCentresMatrix = repmat(rb.aodCentres(:,aodNumber),[1,rb.numOfRaysPerPerturbation,rb.numOfPerturbations]);
+            aodCentresMatrix = rb.aodCentres{aodNumber};
             xyzAod = propagate_ray_to_plane(rb.GetXyzNthAodBack(aodNumber-1),rb.k,unitNormalToAod,aodCentresMatrix);
             rb.SetXyzNthAodFront(aodNumber,xyzAod);
             
@@ -43,7 +43,7 @@ function [ rb ] = aol_model_rays( microSecs, xyInputMm, aolPerturbations, driveP
             
             function localFreq = FindLocalFreq(nthAod, rb)
                 xyzIn = rb.GetXyzNthAodFront(nthAod);
-                xyzFromCentre = xyzIn - rb.AodCentreForEachRay(nthAod);
+                xyzFromCentre = xyzIn - rb.aodCentres{nthAod};
                 xyzFromCentreCf = TransformToPerturbedCrystalFrame(xyzFromCentre,nthAod,rb);
                 
                 V = teo2.find_v_ac_min(pi/2,pi/4);
