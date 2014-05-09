@@ -3,7 +3,7 @@ tic
 
 microSecs = -4:4:4;
 xyMm = GeneratePositionGrid(-5:5:5);
-xyDeflectMm = GeneratePositionGrid(-10);
+xyDeflectMm = GeneratePositionGrid(10);
 pairDeflectionRatio = 1;
 baseFreq = 40e6;
 scanSpeed = 0;
@@ -19,14 +19,14 @@ opt = Simple4();
 %PlotFovEfficiencyScanning(0,focalLength,[200,600,1400,2000,3000,4000,5000]);
 
     function [eff] = Simple4()
-        driveParams = MakeDriveParams(xyDeflectMm, pairDeflectionRatio, scanSpeed, baseFreq, focalLength);
+        driveParams =  aol_drive_params.MakeDriveParams(xyDeflectMm, pairDeflectionRatio, scanSpeed, baseFreq, focalLength);
         eff = plot_and_analyse_aol(microSecs,xyMm, aolPerturbations, driveParams, 4, transducerWidths, true );
     end
 
     function [opt] = OptimiseAngles4()
         t = [0.04    0.04   0   0];
         p = [ -pi/2  -1.5708   -1.5708   -1.5708];
-        driveParamsForOptimising = MakeDriveParams([0;0], 1, 0, baseFreq, 5);
+        driveParamsForOptimising =  aol_drive_params.MakeDriveParams([0;0], 1, 0, baseFreq, 5);
         for nthAod = 1:4
             opt = FindOptimalPerturbation(nthAod, t, p);
             t(nthAod) = opt(1);
@@ -53,7 +53,7 @@ opt = Simple4();
         fovMm = focalLengthLocal * 1000 * fovAngle;
         [xDeflectMmLocal,yDeflectMmLocal] = meshgrid(linspace(-fovMm/2,fovMm/2,divs));
         xyDeflectMmLocal = [xDeflectMmLocal(:)'; yDeflectMmLocal(:)'];
-        driveParams = MakeDriveParams(xyDeflectMmLocal, pairDeflectionRatioLocal, 0, baseFreq, focalLengthLocal);
+        driveParams =  aol_drive_params.MakeDriveParams(xyDeflectMmLocal, pairDeflectionRatioLocal, 0, baseFreq, focalLengthLocal);
         deflectionEff = plot_and_analyse_aol(microSecs,xyMm, SpecifyPerturbations(-1), driveParams, 4, transducerWidths, true );
         figure();
         contour(xDeflectMmLocal/focalLengthLocal,yDeflectMmLocal/focalLengthLocal,reshape(deflectionEff,divs,divs));
@@ -72,7 +72,7 @@ opt = Simple4();
         deflectionEff = zeros(divs,length(pairDeflectionRatioLocal)*length(baseFreq),length(scanSpeedLocal));
         for speedNum = 1:length(scanSpeedLocal)
             microSecsLocal = xMms / scanSpeedLocal(speedNum) * 1000;
-            driveParams = MakeDriveParams(GeneratePositionGrid(0), pairDeflectionRatioLocal, scanSpeedLocal(speedNum), baseFreq, focalLengthLocal);
+            driveParams =  aol_drive_params.MakeDriveParams(GeneratePositionGrid(0), pairDeflectionRatioLocal, scanSpeedLocal(speedNum), baseFreq, focalLengthLocal);
             deflectionEff(:,:,speedNum) = plot_and_analyse_aol(microSecsLocal,xyMm, SpecifyPerturbations(-1), driveParams, 4, transducerWidths, false );
         end
         figure()
@@ -91,17 +91,6 @@ function xyMm = GeneratePositionGrid(gridSpacing)
     xMm = xMm(:)';
     yMm = yMm(:)';
     xyMm = [xMm;yMm];
-end
-
-function driveParams = MakeDriveParams(xyDef,ratio,speed,optimalBaseFreq,focalLength)
-    % returns arrays of horizontal form pure stretch on speed, pure repeat on ratio
-    [xDefStretch,ratioStretched,speedStretched] = meshgrid(xyDef(1,:),ratio,speed);
-    [yDefStretch,~,~] = meshgrid(xyDef(2,:),ratio,speed);
-    xyDefStretched(1,:) = xDefStretch(:); % [ def1 x numOfRatios, def2 x numOfRatios, ...] x numOfSpeeds
-    xyDefStretched(2,:) = yDefStretch(:);
-    ratioStretched = ratioStretched(:)'; % repeat x numOfSpeedsByDefs
-    speedStretched = speedStretched(:)'; % [ speed1 x numOfRatiosByDefs, speed2 x numOfRatiosByDefs, ... ]
-    driveParams = aol_drive_params(focalLength, optimalBaseFreq, xyDefStretched, ratioStretched, speedStretched);
 end
 
 function aolPerturbations = SpecifyPerturbations(id)

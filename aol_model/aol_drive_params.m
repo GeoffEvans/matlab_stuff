@@ -28,6 +28,19 @@ classdef aol_drive_params
             obj.focalLength = focalLength;
         end
     end
+       
+    methods(Static)
+        function driveParams = MakeDriveParams(xyDef,ratio,speed,optimalBaseFreq,focalLength)
+            % returns arrays of horizontal form pure stretch on speed, pure repeat on ratio
+            [xDefStretch,ratioStretched,speedStretched] = meshgrid(xyDef(1,:),ratio,speed);
+            [yDefStretch,~,~] = meshgrid(xyDef(2,:),ratio,speed);
+            xyDefStretched(1,:) = xDefStretch(:); % [ def1 x numOfRatios, def2 x numOfRatios, ...] x numOfSpeeds
+            xyDefStretched(2,:) = yDefStretch(:);
+            ratioStretched = ratioStretched(:)'; % repeat x numOfSpeedsByDefs
+            speedStretched = speedStretched(:)'; % [ speed1 x numOfRatiosByDefs, speed2 x numOfRatiosByDefs, ... ]
+            driveParams = aol_drive_params(focalLength, optimalBaseFreq, xyDefStretched, ratioStretched, speedStretched);
+        end
+    end
     
 end
 
