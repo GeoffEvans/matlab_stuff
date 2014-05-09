@@ -46,7 +46,7 @@ aolDrives = aol_drive_freqs(baseFreq,chirp);
             xyDeflectionCumulator = zeros(2,numOfDrives);
             for mthDeflectingAod = 1:aodNumber-1
                 spacings = aodSpacing(mthDeflectingAod:(aodNumber-1));
-                offsetDueToMthAod = sum(spacings) .* aodDirectionVectors{mthDeflectingAod} * (baseFreq(mthDeflectingAod,:)*0+optimalBaseFreq); % note use of outer product here
+                offsetDueToMthAod = sum(spacings) .* aodDirectionVectors{mthDeflectingAod} * baseFreq(mthDeflectingAod,:); % note use of outer product here
                 xyDeflectionCumulator = xyDeflectionCumulator + offsetDueToMthAod;
             end
             xyDeflectionCumulator = xyDeflectionCumulator * lambda/V;
@@ -56,8 +56,7 @@ aolDrives = aol_drive_freqs(baseFreq,chirp);
     function [aodDirectionVectors, aodSpacing, chirpFactor, baseFreq] = Aod4(focalLength, xyDeflectionMm, pairDeflectionRatio, optimalBaseFreq, scanSpeed)
         %aodDirectionVectors = {[0;1], [1;0], -[0;1], -[1;0]};
         aodDirectionVectors = {[1;0], [0;1], -[1;0], -[0;1]};
-        aodSpacing = [5e-2, 5e-2, 5e-2];
-        aodSpacing = [aodSpacing, sum(aodSpacing)+focalLength];
+        aodSpacing = [5e-2, 5e-2, 5e-2, focalLength];
         
         effctvSpcng = aodSpacing - correctionDistance;
         
