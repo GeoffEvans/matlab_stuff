@@ -15,21 +15,21 @@ function [a, b, c, ticksPerRamp] = microscope_drivers_structural(...
 aodXyCentres = [ [0;0], [0;0], [0;0], [0;0] ];
 xyImageCentreNormalised = [xImageCentreNormalised; yImageCentreNormalised];
 
-[~, zeroDeflectionCentres, ~, ~] = calculate_aol_drive(4, aol_drive_params(1, optimalFrequency, [0;0], pairDeflectionRatio, 0));
+[~, zeroDeflectionCentres, ~, ~] = calculate_aol_drive(4, aol_drive_params(inf, optimalFrequency, [0;0], pairDeflectionRatio, 0));
 
 [xyDeflectionMm,focalLength] = RemoveNormalisation(xyNumOfElems, zoomFactor, acceptanceAngle, zImageCentreNormalised, xyImageCentreNormalised, zeroDeflectionCentres{end});
 
-[aodDirectionVectors, ~, ~, aolDrives] = calculate_aol_drive(4, aol_drive_params(focalLength, optimalFrequency, xyDeflectionMm, pairDeflectionRatio, 0));
+[aodDirectionVectors, generalCentres, ~, aolDrives] = calculate_aol_drive(4, aol_drive_params.MakeDriveParams(xyDeflectionMm,pairDeflectionRatio,0,optimalFrequency,focalLength));
 
-aolDrives = CompensateFreqForTransducerLocation(aodXyCentres, zeroDeflectionCentres, aodDirectionVectors, aolDrives);
+[baseFreqCompensated,chirp] = CompensateFreqForTransducerLocation(aodXyCentres, zeroDeflectionCentres, aodDirectionVectors, aolDrives);
 
-[a, b, c] = ComputeReturnsForLabview(aolDrives);
+[a, b, c] = ComputeReturnsForLabview(baseFreqCompensated,chirp);
 
     function [xyDeflectionMm,zImageCentre] = RemoveNormalisation(xyNumOfElems, zoomFactor, acceptanceAngle, zImageCentreNormalised, xyImageCentreNormalised, xyzFinalAodRayCentres)
         
         % Originally, half deflection went on each of the pair, so if max deflection on one is accAngle then total def is twice that, hence factor of 2 below
         zImageCentreNormalised = (zImageCentreNormalised == 0) * 1e-6 + zImageCentreNormalised; % avoid divide by 0
-        zImageCentre = aodAperture / (4 * acceptanceAngle * zImageCentreNormalised);
+        zImageCentre = aodAperture / (4 * acceptanceAngle * zImageCentreNormalised); % in m
         
         xyExtremeRelToBaseRay = 2 * acceptanceAngle / zoomFactor * zImageCentre; % in mm assuming acceptanceAngle in mrad
         
@@ -43,9 +43,13 @@ aolDrives = CompensateFreqForTransducerLocation(aodXyCentres, zeroDeflectionCent
         xyDeflectionMm = [xGrid(:), yGrid(:)]';
     end
 
-    function aolDrives = CompensateFreqForTransducerLocation(aodXyCentres, baseRayCentres, aodDirectionVectors, aolDrives)
-        timeFromTransducerToBaseRay = CalculateTimeFromTransducerToBaseRay(aodXyCentres, cell2mat(baseRayCentres), cell2mat(aodDirectionVectors));
-        aolDrives.baseFreq = aolDrives.baseFreq + aolDrives.chirp .* timeFromTransducerToBaseRay(:);
+    function [baseFreqCompensated,chirp] = CompensateFreqForTransducerLocation(aodXyCentres, baseRayCentres, aodDirectionVectors, aolDrives)
+        baseFreq = reshape([aolDrives.baseFreq],4,numel(aolDrives));
+        chirp = reshape([aolDrives.chirp],4,numel(aolDrives));
+        
+        timeFromTransducerToBaseRay = CalculateTimeFromTransducerToBaseRay(aodXyCentres, cell2mat(baseRayCentres), cell2mat(aodDirectionVectors));        
+
+        baseFreqCompensated = baseFreq + chirp .* repmat(timeFromTransducerToBaseRay(:),1,numel(aolDrives)); % QQ TODO amend to use baseRayCentre for each drive
         
         function timeFromTransducerToBaseRay = CalculateTimeFromTransducerToBaseRay(aodXyCentres, baseRayCentres, aodDirectionVectors)
             distanceFromTransducerToBaseRay = aodAperture/2 + dot(aodDirectionVectors, baseRayCentres(1:2,:) - aodXyCentres);
@@ -53,10 +57,10 @@ aolDrives = CompensateFreqForTransducerLocation(aodXyCentres, zeroDeflectionCent
         end
     end
 
-    function [a, b, c] = ComputeReturnsForLabview(aolDrives)
+    function [a, b, c] = ComputeReturnsForLabview(baseFreq,chirp)
         
-        a = ScaleAndRound(aolDrives.baseFreq, aodMode * 2^32 / systemClockFreq);
-        b = ScaleAndRound(aolDrives.chirp, aodMode * 2^32 / systemClockFreq / 8); % scale B down here and expand later
+        a = ScaleAndRound(baseFreq, aodMode * 2^32 / systemClockFreq);
+        b = ScaleAndRound(chirp, aodMode * 2^32 / systemClockFreq / 8); % scale B down here and expand later
         c = b * 0;
         
         dwellTime = dwellTimeMultiplier * dataTimeInterval;

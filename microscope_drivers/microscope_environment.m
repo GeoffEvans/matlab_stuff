@@ -12,7 +12,7 @@ xyNumOfElems = 100;
 dwellTimeMultiplier = 1;
 xImageCentreNormalised = 0; 
 yImageCentreNormalised = 0; 
-zImageCentreNormalised = 0;
+zImageCentreNormalised = 1;
 
 pairDeflectionRatio = 1;
 
