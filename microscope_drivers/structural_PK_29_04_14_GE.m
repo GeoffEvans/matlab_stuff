@@ -1,4 +1,4 @@
-
+function [AABB] = struc()
 % 06_03_2014 - CHANGED to scale B (div by 8) as for scanning mode
 % v4 corrects gridpoint for equations on patent 15th April 08
 % v3 makes movex,movey and astig all functions of Z
@@ -45,14 +45,14 @@ end
 
 % Make dwelltime an absolute multiple of dataclock
 dwell = 1;%%%%%%%%%%%%%%%%%%%%%%%%%%%%H
-dwelltime = dwell*1e-6/dataclock
+dwelltime = dwell*1e-6/dataclock;
 imaging =0;%%%%%%%%%%%%%%%H
 skewZX=0;
 skewZY=0;
 
 zoom1 = 1;%%%%%%%%%H
-zoom=round(zoom1) %  make 'zoom' an integer
-Nvox1 = 100;%%%%%%%%%%%%%H
+zoom=round(zoom1); %  make 'zoom' an integer
+Nvox1 = 10;%%%%%%%%%%%%%H
 Nvox = round(Nvox1);
 gridnumberXY= Nvox1; %%%%%%%%%%H
 %
@@ -75,15 +75,15 @@ Zp=0;
 % the next set of 9 parameters fine tune the ramp rates of the 4 AODs to
 % correct for the effect on position of the angled surfaces of he AODS.
 % They are each of the form 1+alpha +beta*Znp + gamma* Znp^2
-alphaX=0
-betaX=0 % modifies MoveX
-gammaX=0
-alphaY=0
-betaY=0 % modifies moveY
-gammaY=0
-alphaAstig=0
-betaAstig=0  % modifies Astig, the astigmatism
-gammaAstig=0
+alphaX=0;
+betaX=0; % modifies MoveX
+gammaX=0;
+alphaY=0;
+betaY=0; % modifies moveY
+gammaY=0;
+alphaAstig=0;
+betaAstig=0;  % modifies Astig, the astigmatism
+gammaAstig=0;
 
 % Y coordinate of centre of area to be imaged (Normalised to lie between -1 and +1)
 % an area will be scanned between Xc-1/zoom and Xc+1/zoom and Yc-1/zoom and
@@ -93,7 +93,7 @@ gammaAstig=0
 %triggerwidth=ceil(4e-6/dataclock)*dataclock;
 %Amplitude  = ([2100 1500 1900 1500]); %Max acoustic drive amplitude for AODs 1-4, each in range 0-4095
 % Final set drive Amplitude for a particular miniscan = Amplitude* AmpMultgp(k)(becomes AmplitudeM(p)), the Amplitude multiplier.
-mode=-1 %diffraction order used by the AODs, changes sign of angle of deflection and wavefront curvature
+mode=-1; %diffraction order used by the AODs, changes sign of angle of deflection and wavefront curvature
 %lambda=800e-9;
 %NEW
 %L=22e-3; % aperture of AOD m
@@ -127,10 +127,10 @@ d4appmin= Va^2*((L/Va))/(4*lambda*Deltafmax); %corrected 150408
 % for each of the points below will make a grid of points centred on it
 Ngxy=round(gridnumberXY); % number of grid points per GPC in X and Y (must be odd)
 Ngz=round(gridnumberZ);% number of grid points per GPC in Z(must be odd)
-Spxy=round(1) %spacing of gridpoints in X and Y (voxels)
-Spz=round(1) %spacing of gridpoints in Z(voxels)
+Spxy=round(1); %spacing of gridpoints in X and Y (voxels)
+Spz=round(1); %spacing of gridpoints in Z(voxels)
 
-AmpMultgp=ones(1,length(Xp))% amplitude multiplier for RF drive of each GP (for varying focussed spot intensity
+AmpMultgp=ones(1,length(Xp));% amplitude multiplier for RF drive of each GP (for varying focussed spot intensity
 % with e.g. depth(must be <1 or will cause overdrive of AODs). This
 % multiplier is applied to all 4 AODs. As they are in series the intensity
 % reduces approximatly as the fourth power of AmpMultgp
@@ -140,13 +140,13 @@ AmpMultgp=ones(1,length(Xp))% amplitude multiplier for RF drive of each GP (for 
 Tdgp=dataclock*(dwelltime.*ones(1,length(Xp))); % dwell times for each point of the GPC sequence(=integer*dataclock  s )
 %Tdgp=dataclock*ceil(dwelltime.*ones(1,length(Xp))); % dwell times for each point of the GPC sequence(=integer*dataclock  s )
 %Tdgp=1e-6*ceil(dwelltime.*ones(1,length(Xp))); % dwell times for each point of the GPC sequence(=integer*dataclock  s )
-NGPC=size(Zp,2) % number of Grid Point Centres per pointing mode cycle
-NC=round(1) % number of pointing mode cycles per AOD for loading onto iDDS
+NGPC=size(Zp,2); % number of Grid Point Centres per pointing mode cycle
+NC=round(1); % number of pointing mode cycles per AOD for loading onto iDDS
 if max(AmpMultgp)>1;
     error;('line56 AmpMultgp greater than 1')
 end
-PMCtime=dataclock*ceil(1e-3/dataclock) % Pointing mode cycle time (= integer*dataclock s )
-Scantime=NC*PMCtime
+PMCtime=dataclock*ceil(1e-3/dataclock); % Pointing mode cycle time (= integer*dataclock s )
+Scantime=NC*PMCtime;
 % choose this to be slightly greater than sum of scan times of PMC,its
 % function is to ensure monitored time points are at a convenient time
 % interval. If sum of scan times  > PMCtime then PMC time becomes an increasing integer *
@@ -170,7 +170,7 @@ for u=1:NGPC;  % first u loop finds voxel identity of each Grid Point Centre
         Mzgp(u)=floor(Zp(u)*(Mvox/2))+Mvox/2;%Z zoomed voxel identifier (Mvox even)
     end
 end % end of first u loop
-k=0
+k=0;
 
 if imaging == 0
     for u=1:NGPC; % GPC loop
@@ -268,9 +268,9 @@ for k=1:NDV; % for each dwell voxel
     %diverging rays
     %Next set the fine tuning of the ramp rate paramenters which are a function
     %of Znp
-    movex=1+alphaX +betaX*Znp(k)+gammaX*Znp(k)^2
-    movey=1+alphaY +betaY*Znp(k)+gammaY*Znp(k)^2
-    astig =1+alphaAstig +betaAstig*Znp(k)+gammaAstig*Znp(k)^2
+    movex=1+alphaX +betaX*Znp(k)+gammaX*Znp(k)^2;
+    movey=1+alphaY +betaY*Znp(k)+gammaY*Znp(k)^2;
+    astig =1+alphaAstig +betaAstig*Znp(k)+gammaAstig*Znp(k)^2;
     % Next Calculate the four AOD ramp rates during pointing.
     a(1)=mode*((Va^2/lambda)/(2*(d4app+d3app)+d1app+d2app)...
         )/movex*astig;  %AOD X1 corrected 150408
@@ -301,6 +301,8 @@ for k=1:NDV; % for each dwell voxel
     fdeflect0(3) = fdeflect(3) + a(3)*timemid;
     fdeflect0(4) = fdeflect(4) + a(4)*timemid;
     
+    AA(k,:) = Fc + fdeflect0;
+    BB(k,:) = a;
     
     A(k,1) = round((Fc + fdeflect0(1))*(2^32/sysclk));
     A(k,3) = round((Fc + fdeflect0(2))*(2^32/sysclk));
@@ -365,3 +367,5 @@ for k=1:NDV; % for each dwell voxel
     
 end %end of k loop
 Totaldwellnumber=sum(Td)/dataclock*NC;
+AABB = {AA,BB};
+end
