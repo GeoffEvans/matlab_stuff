@@ -4,7 +4,7 @@ lambda = 800e-9;
 numberOfAods = 2;
 V = [613, 700];
 l = [5e-2, 1];
-vx = 10;
+vx = 0;
 linearChirps = [FirstChirp, SecondChirp];
 [t, x1] = GetSamplingRanges();
 CalculateRayEnds();
@@ -15,7 +15,6 @@ CalculateRayEnds();
         x{1} = x1;
         z{1} = 0;
         
-        figure();
         hold on
         for n = 1:numberOfAods
             x{n+1} = GetNextXyPositions(n);
@@ -52,8 +51,8 @@ CalculateRayEnds();
 end
 
 function [t,x1] = GetSamplingRanges()
-    xRange = normrnd(0,10,1,10);
-    tRange = 0:0.010:0.100;
+    xRange = -0.01;
+    tRange = -1.61e-5;
     [x1temp,ttemp] = meshgrid(xRange,tRange);
     x1 = x1temp(:)';
     t = ttemp(:)';
