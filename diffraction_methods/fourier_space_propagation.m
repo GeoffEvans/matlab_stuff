@@ -33,8 +33,8 @@ fourier_space_propagation( func, 0.17, -600, 200, 1, 100)
         [~,ind] = sortrows(xGrid');
         xGrid = xGrid(:,ind');
         xPropagated = xPropagated(:,ind');
-        plot(xGrid,abs(xPropagated));
-        %s = surf(xGrid,zGrid,abs(xPropagated));
+        %plot(xGrid,abs(xPropagated));
+        s = surf(xGrid,zGrid,abs(xPropagated));
         
         %set(s,'linestyle','none');
         xlabel('x')
