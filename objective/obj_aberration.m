@@ -6,7 +6,7 @@ focalLength = 0.008;
 V = 613;
 wavln = 800e-9;
 
-examine_shift()
+obj_para()
 
 function [x2, k2] = Forward(x, k)
     focalLength = 0.008;    
@@ -32,13 +32,13 @@ function PlotTripleGraph(x, first, second, third, titleStr)
 end
 
 function examine_shift()
-    shift = 80e-6;
+    shift = -80e-6;
     
     k2 = linspace(-1, 1, ray_count);
     x2 = shift * tan(k2);
     [x1, k1] = Reverse(x2, k2);
     p = polyfit(x1,k1,4);
-    
+   
     PlotRayTraces()  
     PlotAngleAndFreqShiftAgainstPosition()
     AnalyseAolCurvatureShift()
@@ -75,7 +75,7 @@ end
 
 function obj_para()
     x_array = 0.01 * linspace(-1, 1, ray_count);
-    k_array = zeros(1, ray_count) + 0.000;% - x_array / 100;
+    k_array = zeros(1, ray_count) + x_array / 10;
     
     [x2_array, k2_array] = Forward(x_array, k_array);
     

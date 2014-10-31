@@ -6,23 +6,44 @@ xVel = 0;
 yVel = 0;
 [t, x1, y1, k1] = GetSamplingRanges(lambda);
 
-correction = 1e12;
+correction = -0*2.9e19;
+focalLength = 1e1;
 
-[x, y, z, k] = CalculateRayEnds(t, x1, y1, k1, 1e0, correction, xVel/V, yVel/V);
+[x, y, z, k] = CalculateRayEnds(t, x1, y1, k1, focalLength, correction, xVel/V, yVel/V);
+[x2, y2, k2] = Relay(x{end-1}, y{end-1}, k{end}, 0.5);
+[x3, y3, k3] = Objective(x2, y2, k2);
+[xF, yF, d] = GetFocusedXy(k3, x3, y3);
 
-%xShift = mean(x{end});
-%yShift = mean(y{end});
-%x = cellfun(@(q) q - xShift, x, 'UniformOutput', false);
-%y = cellfun(@(q) q - yShift, y, 'UniformOutput', false);
+PlotObjFocus(x3, y3, xF, yF, k3, d, t)
 
-TraceRays(4, x, y, z);
-XyScatterPsf(x{end}, y{end}, xVel, yVel, t);
-%[xOut, yOut, d] = RelayAndObj(x{end-1}, y{end-1}, k{end});
-%XyScatterPsf(xOut, yOut, 0, 0, t);
-%TraceRays(1, {x{end-1}, xOut}, {y{end-1}, yOut}, {0, d});
+    function PlotObjFocus(x3, y3, xF, yF, k3, d, t)
+        TraceRays(1, {x3, xF}, {y3, yF}, {0, d}, k3);
+        XyScatterPsf(xF, yF, 0, 0, t);
+    end
+
+    function PlotAolFocus(x,y,z,k,t)
+        TraceRays(1, {x{end-1}, x{end}}, {y{end-1}, y{end}}, {z{end-1}, z{end}}, k{end});
+        XyScatterPsf(x{end}, y{end}, 0, 0, t);
+    end
+        
+    function PlotAol(x,y,z,k)
+        TraceRays(6, x, y, z, k{end});
+    end
+
+    function ViewCrossSections(x,y,x2,y2,x3,y3,t)
+        XyScatterPsf(x{end-1}, y{end-1}, 0, 0, t);
+        XyScatterPsf(x2, y2, 0, 0, t);
+        XyScatterPsf(x3, y3, 0, 0, t);
+    end
+
+    function PlotAroundZeroPlane(k3,x3,y3,D)
+        [xS, yS] = GetNextXy(k3, x3, y3, -D);
+        [xE, yE] = GetNextXy(k3, x3, y3, D);
+        TraceRays(1, {xS, xE}, {yS, yE}, {-D, D}, k3);
+    end
 
     function [x, y, z, k] = CalculateRayEnds(t, x1, y1, k1, focalLength, cubicChirp, vx, vy)
-        [aodDirectionVectors, aodSpacing, chirpFactor] = aol_chirps.Aod6(focalLength);
+        [aodDirectionVectors, aodSpacing, chirpFactor] = aol_chirps.Aod6pairedASscan(focalLength, 0, 0);
         numberOfAods = length(aodSpacing);
         linearChirps = V*V/lambda * chirpFactor;
                                                                                    
@@ -55,12 +76,6 @@ function [xOut, yOut] = GetNextXy(k, xIn, yIn, distance)
     yOut = yIn + k(2,:) ./ k(3,:) * distance;
 end
 
-function [xOut, yOut, d] = RelayAndObj(x, y, k)
-    [x2, y2, k2] = Relay(x, y, k, 0.5);
-    [x3, y3, k3] = Objective(x2, y2, k2);
-    [xOut, yOut, d] = GetFocusedXy(k3, x3, y3);
-end
-
 function [xOut, yOut, d] = GetFocusedXy(k, x, y)
    
     function v = f(d) 
@@ -83,15 +98,16 @@ end
 function [x2, y2, k2] = Objective(x, y, k)
     r = sqrt(x.^2 + y.^2);
     theta = atan2(y, x);
-    angleIn = atan2(sqrt(k(1,:).^2 + k(2,:).^2), k(3,:));
+    phi = atan2(k(2,:), k(1,:));
+    angleIn = atan(sqrt(k(1,:).^2 + k(2,:).^2) ./ k(3,:));
     
     focalLength = 0.008;
     r2 = focalLength*angleIn;
     angleOut = -asin(r/focalLength);
     
     k2 = ConvertAngleToWavevec(angleOut, theta);
-    x2 = r2 .* cos(theta);
-    y2 = r2 .* sin(theta);
+    x2 = r2 .* cos(phi);
+    y2 = r2 .* sin(phi);
 end
 
 function XyScatterPsf(x, y, xVel, yVel, t)
@@ -101,29 +117,30 @@ function XyScatterPsf(x, y, xVel, yVel, t)
     yE = yEff(:);
     figure();
     scatter(xE, yE);
+    axis equal
     xlabel('x')
     ylabel('y')
     display(var(xEff) + var(yEff)) % sum x and y vars
 end
 
-function TraceRays(numberOfAods, x, y, z)
+function TraceRays(numberOfAods, x, y, z, kEnd)
     figure();
     hold on
     for n = 1:numberOfAods
-        line([x{n};x{n+1}],[y{n};y{n+1}],[z{n};z{n+1}]);
-        fill3([max(x{n}) max(x{n}) min(x{n}) min(x{n})],...
-                [max(y{n}) min(y{n}) min(y{n}) max(y{n})],...
-                repmat([z{n}],1,4),repmat([z{n}],1,4))
+        line([x{n};x{n+1}],[z{n};z{n+1}]);
     end
+    extra = 0.3 * (z{n+1} - z{n});
+    [xNext, yNext] = GetNextXy(kEnd, x{n+1}, y{n+1}, extra);
+    line([x{n+1};xNext],[z{n+1};z{n+1}+extra]);
     hold off
     alpha(0.1)
 end
 
 function [t,x1,y1,k1] = GetSamplingRanges(lambda)
-    thetaRange = linspace(0,2*pi,8);
+    thetaRange = linspace(0,2*pi,2);
     thetaRange = thetaRange(2:length(thetaRange));
     rRange = linspace(-10,10,12) * 1e-3;
-    tRange = 2 * 1e-6;
+    tRange = 0 * 1e-6;
     xTemp = repmat(cos(thetaRange') * rRange, [1, 1, length(tRange)]);
     yTemp = repmat(sin(thetaRange') * rRange, [1, 1, length(tRange)]);
     tTemp = zeros([length(thetaRange), length(rRange), length(tRange)]);

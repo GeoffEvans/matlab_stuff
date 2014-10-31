@@ -9,7 +9,7 @@ classdef aol_chirps
         function [aodDirectionVectors, aodL, chirpFactor] = Aod4(focalLength)
             aodDirectionVectors = {[1;0], [0;1]};
             aodDirectionVectors = [aodDirectionVectors, cellfun(@(x) x*(-1), aodDirectionVectors,'UniformOutput', false)];
-            aodL = [5e-12 * ones(1,3), focalLength];
+            aodL = [5e-2 * ones(1,3), focalLength];
             l1 = aodL(1);
             l2 = aodL(2);
             l3 = aodL(3);
@@ -20,9 +20,9 @@ classdef aol_chirps
                                       1/(2*l4)];
         end
 
-        function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedT()
+        function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedT(focalLength)
             aodDirectionVectors = {[1;0], [-1;0], [1;sqrt(3)]/2, -[1;sqrt(3)]/2, [-1;sqrt(3)]/2, -[-1;sqrt(3)]/2};
-            aodL = [5, 5, 5 ,5 ,5 , 5e0];
+            aodL = [5e-2 * ones(1,5), focalLength];
             L = aodL(1);
             f = aodL(6);
             chirpFactor =  [(96*L^2 + 96*L*f + 24*f^2)/(422*L^3 + 612*L^2*f + 270*L*f^2 + 36*f^3)...
@@ -32,9 +32,9 @@ classdef aol_chirps
                                        (10*L + 4*f)/((L + f)*(13*L + 6*f))...
                                                                          0];
         end
-        function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedS()
+        function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedS(focalLength)
             aodDirectionVectors = {[1;0], [-1;0], [1;sqrt(3)]/2, -[1;sqrt(3)]/2, [-1;sqrt(3)]/2, -[-1;sqrt(3)]/2};
-            aodL = [5, 5, 5 ,5 ,5 , 5e0];
+            aodL = [5e-2 * ones(1,5), focalLength];
             L = aodL(1);
             f = aodL(6);
             chirpFactor =  [(144*L^2 + 168*L*f + 48*f^2)/((2900*L^3)/3 + 1912*L^2*f + 984*L*f^2 + 144*f^3)...
@@ -44,9 +44,9 @@ classdef aol_chirps
                                               (14*L + 4*f)/(((2*L)/3 + f)*(26*L + 12*f))...
                                                                                  1/(3*f)];
         end
-        function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedAT()
+        function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedAT(focalLength)
             aodDirectionVectors = {[1;0], [-1;0], -[1;sqrt(3)]/2, [1;sqrt(3)]/2, [-1;sqrt(3)]/2, -[-1;sqrt(3)]/2};
-            aodL = [5, 5, 5 ,5 ,5 , 5e0];
+            aodL = [5e-2 * ones(1,5), focalLength];
             L = aodL(1);
             f = aodL(6);
             chirpFactor =  [(336*L^2 + 368*L*f + 96*f^2)/(1224*L^3 + 2128*L^2*f + 1032*L*f^2 + 144*f^3)...
@@ -58,8 +58,7 @@ classdef aol_chirps
         end
         function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedAS(focalLength)
             aodDirectionVectors = {[1;0], [-1;0], -[1;sqrt(3)]/2, [1;sqrt(3)]/2, [-1;sqrt(3)]/2, -[-1;sqrt(3)]/2};
-            aodL = [5, 5, 5 ,5 ,5 , 100] * 1e-2;
-            aodL(6) = focalLength;
+            aodL = [5e-2 * ones(1,5), focalLength];
             L = aodL(1);
             f = aodL(6);
             chirpFactor =  [((392*L^2)/3 + 168*L*f + 48*f^2)/((2308*L^3)/3 + 1704*L^2*f + 936*L*f^2 + 144*f^3)...
@@ -71,8 +70,7 @@ classdef aol_chirps
         end
         function [aodDirectionVectors, aodL, chirpFactor] = Aod6pairedASscan(focalLength, vx, vy)
             aodDirectionVectors = {[1;0], [-1;0], -[1;-sqrt(3)]/2, [1;-sqrt(3)]/2, -[1;sqrt(3)]/2, [1;sqrt(3)]/2};
-            aodL = ones(1,6) * 5e-12;
-            aodL(6) = focalLength;
+            aodL = [5e-2 * ones(1,5), focalLength];
             L = aodL(1);
             f = aodL(6);
             chirpFactor =  [(- 27*L^2*vx^2 - 10*3^(1/2)*L^2*vx*vy + 170*L^2*vx + 19*L^2*vy^2 + 130*3^(1/2)*L^2*vy + (392*L^2)/3 - 18*L*f*vx^2 + 228*L*f*vx + 6*L*f*vy^2 + 116*3^(1/2)*L*f*vy + 168*L*f + 72*f^2*vx + 24*3^(1/2)*f^2*vy + 48*f^2)/(- 27*L^3*vx^2 - 10*3^(1/2)*L^3*vx*vy + 32*L^3*vx + 19*L^3*vy^2 + (248*3^(1/2)*L^3*vy)/3 + (2308*L^3)/3 - 18*L^2*f*vx^2 + 72*L^2*f*vx + 6*L^2*f*vy^2 + 128*3^(1/2)*L^2*f*vy + 1704*L^2*f + 36*L*f^2*vx + 36*3^(1/2)*L*f^2*vy + 936*L*f^2 + 144*f^3)...
