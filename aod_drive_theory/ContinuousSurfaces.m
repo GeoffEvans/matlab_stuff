@@ -4,7 +4,7 @@ v1 = 619;
 
 a = parallel2();
 b = subs(a, {'v1', 'l1', 'vx'}, {v1, l1, 0});
-[v2,l2] = meshgrid(620:1:700,1:0.1:20);
+[v2,l2] = meshgrid(620:1:800,1:0.1:20);
 vx = -l2 * 100;
 figure()
 hold on
