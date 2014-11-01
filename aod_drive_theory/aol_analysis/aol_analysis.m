@@ -1,23 +1,22 @@
-function aol_analysis()
+function aol_analysis(focalLength, correction, angleSamples, aolFunction)
 
 lambda = 800e-9;
 V = 613;
 xVel = 0;
 yVel = 0;
-[t, x1, y1, k1] = GetSamplingRanges(lambda);
+[t, x1, y1, k1] = GetSamplingRanges(lambda, angleSamples);
 
-correction = -0*2.9e19;
-focalLength = 1e1;
-
-[x, y, z, k] = CalculateRayEnds(t, x1, y1, k1, focalLength, correction, xVel/V, yVel/V);
+[x, y, z, k] = CalculateRayEnds(t, x1, y1, k1, focalLength, correction, aolFunction);
 [x2, y2, k2] = Relay(x{end-1}, y{end-1}, k{end}, 0.5);
 [x3, y3, k3] = Objective(x2, y2, k2);
 [xF, yF, d] = GetFocusedXy(k3, x3, y3);
 
 PlotObjFocus(x3, y3, xF, yF, k3, d, t)
+%TraceRays(x, y, z, k{end})
+%TraceRays2D(x, y, z, k{end})
 
     function PlotObjFocus(x3, y3, xF, yF, k3, d, t)
-        TraceRays(1, {x3, xF}, {y3, yF}, {0, d}, k3);
+        TraceRays2D({x3, xF}, {y3, yF}, {0, d}, k3);
         XyScatterPsf(xF, yF, 0, 0, t);
     end
 
@@ -42,8 +41,8 @@ PlotObjFocus(x3, y3, xF, yF, k3, d, t)
         TraceRays(1, {xS, xE}, {yS, yE}, {-D, D}, k3);
     end
 
-    function [x, y, z, k] = CalculateRayEnds(t, x1, y1, k1, focalLength, cubicChirp, vx, vy)
-        [aodDirectionVectors, aodSpacing, chirpFactor] = aol_chirps.Aod6pairedASscan(focalLength, 0, 0);
+    function [x, y, z, k] = CalculateRayEnds(t, x1, y1, k1, focalLength, cubicChirp, aolFunction)
+        [aodDirectionVectors, aodSpacing, chirpFactor] = aolFunction(focalLength);
         numberOfAods = length(aodSpacing);
         linearChirps = V*V/lambda * chirpFactor;
                                                                                    
@@ -123,21 +122,39 @@ function XyScatterPsf(x, y, xVel, yVel, t)
     display(var(xEff) + var(yEff)) % sum x and y vars
 end
 
-function TraceRays(numberOfAods, x, y, z, kEnd)
+function TraceRays2D(x, y, z, kEnd)
+    numberOfAods = length(x) - 1;    
     figure();
     hold on
     for n = 1:numberOfAods
         line([x{n};x{n+1}],[z{n};z{n+1}]);
     end
     extra = 0.3 * (z{n+1} - z{n});
-    [xNext, yNext] = GetNextXy(kEnd, x{n+1}, y{n+1}, extra);
+    [xNext, ~] = GetNextXy(kEnd, x{n+1}, y{n+1}, extra);
     line([x{n+1};xNext],[z{n+1};z{n+1}+extra]);
     hold off
     alpha(0.1)
 end
 
-function [t,x1,y1,k1] = GetSamplingRanges(lambda)
-    thetaRange = linspace(0,2*pi,2);
+function TraceRays(x, y, z, kEnd)
+    numberOfAods = length(x) - 1;
+    figure();
+    hold on
+    for n = 1:numberOfAods
+        line([x{n};x{n+1}],[y{n};y{n+1}],[z{n};z{n+1}]);
+        fill3([max(x{n}) max(x{n}) min(x{n}) min(x{n})],...
+                [max(y{n}) min(y{n}) min(y{n}) max(y{n})],...
+                repmat([z{n}],1,4),repmat([z{n}],1,4))
+    end
+    extra = 0.3 * (z{n+1} - z{n});
+    [xNext, yNext] = GetNextXy(kEnd, x{n+1}, y{n+1}, extra);
+    line([x{n+1};xNext], [y{n+1};yNext], [z{n+1};z{n+1}+extra]);
+    hold off
+    alpha(0.1)
+end
+
+function [t,x1,y1,k1] = GetSamplingRanges(lambda, angleSamples)
+    thetaRange = linspace(0,2*pi,angleSamples);
     thetaRange = thetaRange(2:length(thetaRange));
     rRange = linspace(-10,10,12) * 1e-3;
     tRange = 0 * 1e-6;
