@@ -1,6 +1,8 @@
 function sols = matrixdrive6cyclic()
 
-syms c1 c2 c3 c4 c5 c6 l1 l2 l3 l4 l5 l6 C S L f vx vy
+syms c1 c2 c3 c4 c5 c6 f vx vy
+
+L = 5e-2
 
 l1 = L;
 l2 = L;
@@ -11,8 +13,8 @@ l6 = f;
 
 I2 = eye(2);
 I4 = eye(4);
-C = sym(cos(2*pi/3));
-S = sym(sin(2*pi/3));
+C = cos(2*pi/3);
+S = sin(2*pi/3);
 R14 = [1 0; 0 0];
 R25 = [C*C S*C; C*S S*S];
 R36 = [C*C -S*C; -C*S S*S];
@@ -37,16 +39,16 @@ M = P6*Q6*P5*Q5*P4*Q4*P3*Q3*P2*Q2*P1*Q1;
 % go [1 0], -[C S], [C -S], -[1 0], [C S], -[C -S]
 D14 = P6*Q6*P5*Q5*P4*(Q4*P3*Q3*P2*Q2*P1*c1-I4*c4);
 % D1(1,3) == D1(2,3) == 0
-D25 = -P6*Q6*P5*(Q5*P4*Q4*P3*Q3*P2*c2-I4*c5);
+D25 = P6*Q6*P5*(Q5*P4*Q4*P3*Q3*P2*c2-I4*c5);
 % C D1(1,3) + S D1(1,4) == C D1(2,3) + S D1(2,4) == 0
 D36 = P6*(Q6*P5*Q5*P4*Q4*P3*c3-I4*c6);
 % C D1(1,3) - S D1(1,4) == C D1(2,3) - S D1(2,4) == 0
 
 D36q = D36(1:2,3:4) * [C;-S];
-D25q = D25(1:2,3:4) * [C;S];
+D25q = D25(1:2,3:4) * -[C;S];
 D14q = D14(1:2,3:4) * [1;0];
 
-D = D36q + D14q + D25q;% - [vx;vy];
+D = D36q + D14q + D25q - vx*[1;1];
 
 eqs = [M(1:2,1:2) D];
 eqs = eqs(:);
