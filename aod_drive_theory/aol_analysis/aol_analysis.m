@@ -7,7 +7,7 @@ vy = 0;
 [t, x1, y1, k1] = GetSamplingRanges(lambda, angleSamples);
 
 [x, y, z, k] = CalculateRayEnds(t, x1, y1, k1, focalLength, correction, aolFunction);
-[x2, y2, k2] = Relay(x{end-1}, y{end-1}, k{end}, 0.5, 0.0);
+[x2, y2, k2] = Relay(x{end-1}, y{end-1}, k{end}, 0.8, 0.0);
 [x3, y3, k3] = Objective(x2, y2, k2);
 [xF, yF, d] = GetFocusedXy(k3, x3, y3);
 
@@ -23,6 +23,7 @@ PlotAroundZeroPlane(k3,x3,y3,5e-4)
         XyScatterPsf(xF, yF, 0, 0, t);
         
         zIntercepts = x3 .* k3(3,:)./k3(1,:); % projected into xz plane
+        zIntercepts = zIntercepts(~isnan(zIntercepts));
         
         zFocalPoint = mean(zIntercepts)
         zStd = std(zIntercepts - zFocalPoint)
@@ -50,7 +51,7 @@ PlotAroundZeroPlane(k3,x3,y3,5e-4)
     end
 
     function [x, y, z, k] = CalculateRayEnds(t, x1, y1, k1, focalLength, cubicChirp, aolFunction)
-        [aodDirectionVectors, aodSpacing, chirpFactor] = aolFunction(focalLength);
+        [aodDirectionVectors, aodSpacing, chirpFactor] = aolFunction(focalLength, 0);
         numberOfAods = length(aodSpacing);
         linearChirps = V*V/lambda * chirpFactor;
                                                                                    
@@ -168,8 +169,8 @@ end
 function [t,x1,y1,k1] = GetSamplingRanges(lambda, angleSamples)
     thetaRange = linspace(0,2*pi,angleSamples);
     thetaRange = thetaRange(2:length(thetaRange));
-    rRange = linspace(-10,10,8) * 1e-3;
-    tRange = [-5] * 1e-6;
+    rRange = linspace(-8,8,9) * 1e-3;
+    tRange = 0;%[-2 -1 0 1 2] * 1e-6;
     xTemp = repmat(cos(thetaRange') * rRange, [1, 1, length(tRange)]);
     yTemp = repmat(sin(thetaRange') * rRange, [1, 1, length(tRange)]);
     tTemp = zeros([length(thetaRange), length(rRange), length(tRange)]);

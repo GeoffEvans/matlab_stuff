@@ -1,10 +1,7 @@
 function correction_comparison()
 
-%FocalPlane4aol()
-%NoCorrection6aolLong()
-GoodCorrection6aolLong()
-%NoCorrection4aolLong()
-%PoorCorrection4aolLong()
+NoCorrection6aolLong()
+%GoodCorrection6aolLong()
 
 end
 
@@ -65,16 +62,16 @@ aolFunction = @aol_chirps.Aod4;
 aol_analysis(focalLength, correction, angleSamples, aolFunction)
 end
 function GoodCorrection6aolLong()
-correction = 2.2e19; %2.2
-focalLength = 1e1;
-aolFunction = @aol_chirps.Aod6pairedAS;
+correction = 3.9e20;
+focalLength = 1e0;
+aolFunction = @aol_chirps.Aod6cyclicNewScan;
 angleSamples = 8;
 aol_analysis(focalLength, correction, angleSamples, aolFunction)
 end
 function NoCorrection6aolLong()
 correction =  0;
-focalLength = 1e1;
-aolFunction = @aol_chirps.Aod6pairedAS;
+focalLength = 1e0;
+aolFunction = @aol_chirps.Aod6cyclicNewScan;
 angleSamples = 8;
 aol_analysis(focalLength, correction, angleSamples, aolFunction)
 end
