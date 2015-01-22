@@ -1,4 +1,4 @@
-function sols = matrixdrive6cyclic(order)
+function sols = matrixdrive6_136254(order)
 syms c1 c2 c3 c4 c5 c6 f vx vy
 
 a = order;

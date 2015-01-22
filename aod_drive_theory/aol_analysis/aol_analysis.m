@@ -12,9 +12,12 @@ vy = 0;
 [xF, yF, d] = GetFocusedXy(k3, x3, y3);
 
 %PlotAolFocus(x,y,z,k,t)
-%PlotAol(x,y,z,k)
+PlotAol(x,y,z,k)
+set(gca,'FontSize',20)
 PlotObjFocus(x3, y3, xF, yF, k3, d, t)
+set(gca,'FontSize',20)
 PlotAroundZeroPlane(k3,x3,y3,5e-4)
+set(gca,'FontSize',20)
 %TraceRays(x, y, z, k{end})
 %TraceRays2D(x, y, z, k{end})
 
@@ -127,7 +130,8 @@ function XyScatterPsf(x, y, xVel, yVel, t)
     xE = xEff(:);
     yE = yEff(:);
     figure();
-    scatter(xE, yE);
+    scatter(xE, yE, '.');
+    axis([-1.5e-6, 1.5e-6, -1.5e-6, 1.5e-6])
     r = 2e-5;
     %axis([-r r -r r])
     xlabel('x')
@@ -147,6 +151,7 @@ function TraceRays2D(x, y, z, kEnd)
     line([x{n+1};xNext],[z{n+1};z{n+1}+extra], 'color', 'red');
     hold off
     alpha(0.1)
+    axis([-5e-6, 5e-6, -15e-6, 0])
 end
 
 function TraceRays(x, y, z, kEnd)
@@ -170,7 +175,7 @@ function [t,x1,y1,k1] = GetSamplingRanges(lambda, angleSamples)
     thetaRange = linspace(0,2*pi,angleSamples);
     thetaRange = thetaRange(2:length(thetaRange));
     rRange = linspace(-8,8,9) * 1e-3;
-    tRange = 0;%[-2 -1 0 1 2] * 1e-6;
+    tRange = 0;%[-1 0 1] * 1e-6;
     xTemp = repmat(cos(thetaRange') * rRange, [1, 1, length(tRange)]);
     yTemp = repmat(sin(thetaRange') * rRange, [1, 1, length(tRange)]);
     tTemp = zeros([length(thetaRange), length(rRange), length(tRange)]);

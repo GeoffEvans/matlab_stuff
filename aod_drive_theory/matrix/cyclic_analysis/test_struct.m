@@ -1,4 +1,4 @@
-function  test_struct(s, n)
+function test_struct(s, n)
     
     fields = fieldnames(s);   
     
