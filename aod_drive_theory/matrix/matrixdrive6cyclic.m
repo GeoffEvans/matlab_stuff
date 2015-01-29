@@ -1,8 +1,8 @@
 function sols = matrixdrive6cyclic()
 
-syms c1 c2 c3 c4 c5 c6 f vx vy
+syms c1 c2 c3 c4 c5 c6 f vx vy L
 
-L = 5e-2
+L = sym(5e-2)
 
 l1 = L;
 l2 = L;
@@ -13,8 +13,8 @@ l6 = f;
 
 I2 = eye(2);
 I4 = eye(4);
-C = cos(2*pi/3);
-S = sin(2*pi/3);
+C = sym(cos(2*pi/3));
+S = sym(sin(2*pi/3));
 R14 = [1 0; 0 0];
 R25 = [C*C S*C; C*S S*S];
 R36 = [C*C -S*C; -C*S S*S];
