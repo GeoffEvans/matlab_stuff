@@ -2,8 +2,7 @@ function sols = matrixdrive6cyclic()
 
 syms c1 c2 c3 c4 c5 c6 f vx vy L
 
-L = 5e-2
-c6 = (3^(1/2)*vy + 2)/(6*f);
+L = sym(5e-2)
 
 l1 = L;
 l2 = L;
