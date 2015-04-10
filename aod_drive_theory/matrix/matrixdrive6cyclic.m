@@ -1,9 +1,8 @@
-function sols = matrixdrive6cyclic()
+function procd = matrixdrive6cyclic()
 
-syms c1 c2 c3 c4 c5 c6 f vx vy L
+syms c1 c2 c3 c4 c5 c6 f v L
 
 L = 5e-2
-c6 = (3^(1/2)*vy + 2)/(6*f);
 
 l1 = L;
 l2 = L;
@@ -49,11 +48,27 @@ D36q = D36(1:2,3:4) * [C;-S];
 D25q = D25(1:2,3:4) * -[C;S];
 D14q = D14(1:2,3:4) * [1;0];
 
-D = D36q + D14q + D25q - [vx;vy];
+%unit_vector = [1;0]; % x-direction
+%unit_vector = 1/sqrt(2) * [1;1]; % 45 degrees
+unit_vector = 1/2 * [1;sqrt(3)]; % AOD 2
+
+D = D36q + D14q + D25q;% - v * unit_vector; % v is scan velocity / 613
 
 eqs = [M(1:2,1:2) D];
 eqs = eqs(:);
 sols = solve(eqs,'c1','c2','c3','c4','c5','c6');
 
+fields = fieldnames(sols);
+
+procd = cell(2,1);
+for m = 1:2
+    temp_sym = sym(zeros(6,1));
+    for k  = 1:6
+        eqs = sols.(fields{k});
+        temp_sym(k) = eqs(m);
+    end
+    procd{m} = temp_sym;
+end
+    
 end
 
