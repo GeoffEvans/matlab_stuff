@@ -1,26 +1,46 @@
 function aol_psfs()
-
-waves_x1 = [0, 4, 0, 0, 0];
-waves_y1 = [0, 4, 0, 0, 0];    
-waves_x2 = [0, -4.8, 0, 0, 0];
-waves_y2 = [0, -4.8, 0, 0, 0];    
-time = 1e-6;
-
-adjustment1 = 3e2;
-adjustment2 = 1e0;
-number_of_samples = 2.^10 - 1; % computational speed vs accuracy
-k = 2*pi/920e-9;
-z_list = linspace(-20,20,99)*1e-6;
-z_plane_no = round(size(z_list,2)/2); % which z plane is plotted for the xy psf 
-
-waves = struct('x1', waves_x1, 'y1', waves_y1, 'x2', waves_x2, 'y2', waves_y2, 'focus', 0, 'spherical', 0);
-do_plot = struct('input', 0, 'focal_plane', 0, 'angular_spec', 0);
-
-calculate_and_plot(waves, time, number_of_samples, k, adjustment1, adjustment2, z_list, z_plane_no, do_plot);
+    adjustment1 = 5e2;
+    adjustment2 = 1e0;
+    number_of_samples = 2.^10 - 1; % computational speed vs accuracy
+    k = 2*pi/920e-9;
+    z_list = linspace(-20,20,99)*1e-6;
+    z_plane_no = round(size(z_list,2)/2); % which z plane is plotted for the xy psf 
+    do_plot = struct('input', 1, 'focal_plane', 1, 'angular_spec', 1);
+    
+    aol4_psfs(k, number_of_samples, adjustment1, adjustment2, z_list, z_plane_no, do_plot);
+    %aol6_psfs(k, number_of_samples, adjustment1, adjustment2, z_list, z_plane_no, do_plot);
 end
 
-function calculate_and_plot(waves, time, number_of_samples, k, adjustment1, adjustment2, z_list, z_plane_no, do_plot)
-    [sampled_wave_2d, space_width] = get_sampled_wavefunction(waves, time, adjustment1, number_of_samples, k, do_plot.input, do_plot.angular_spec);       
+function aol4_psfs(k, number_of_samples, adjustment1, adjustment2, z_list, z_plane_no, do_plot)
+    waves = struct();
+    waves.x1 = [0, -1, 0, 0, 0];
+    waves.y1 = [0, 1, 0, 0, 0];    
+    waves.x2 = [0, -1, 0, 0, 0];
+    waves.y2 = [0, 1, 0, 0, 0];    
+    waves.focus = 0;
+    waves.spherical = 0;
+    time = 0e-6;
+    
+    [sampled_wave_2d, space_width] = get_sampled_wavefunction4(waves, time, adjustment1, number_of_samples, k, do_plot.input, do_plot.angular_spec);  
+    calculate_and_plot(sampled_wave_2d, space_width, number_of_samples, k, adjustment2, z_list, z_plane_no, do_plot);
+end
+
+function aol6_psfs(k, number_of_samples, adjustment1, adjustment2, z_list, z_plane_no, do_plot)
+    waves = cell(6,1);
+    scaling = 0.5e6;
+    waves{1} = @(t) t.^2 * scaling;
+    waves{2} = @(t) t.^2 * scaling;    
+    waves{3} = @(t) t.^2 * scaling;
+    waves{4} = @(t) t.^2 * scaling;    
+    waves{5} = @(t) t.^2 * scaling;    
+    waves{6} = @(t) t.^2 * scaling;    
+    time = 0e-6;
+
+    [sampled_wave_2d, space_width] = get_sampled_wavefunction6(waves, time, adjustment1, number_of_samples, k, do_plot.input, do_plot.angular_spec);  
+    calculate_and_plot(sampled_wave_2d, space_width, number_of_samples, k, adjustment2, z_list, z_plane_no, do_plot);
+end
+
+function calculate_and_plot(sampled_wave_2d, space_width, number_of_samples, k, adjustment2, z_list, z_plane_no, do_plot)
     [x, y, focal_plane_wave_2d, space_width] = get_focal_plane_wavefunction(sampled_wave_2d, adjustment2, space_width, number_of_samples, k, do_plot.focal_plane);
     propagated_wave_2d = propagate_wave(focal_plane_wave_2d, z_list, space_width, k, number_of_samples, do_plot.angular_spec);
     xy_xz_plot_psf(propagated_wave_2d, x, y, z_list, z_plane_no);
@@ -42,7 +62,7 @@ function plot_wavefunction_2d(wave_function_2d, x, y, labels)
     %axis equal
 end
 
-function [sampled_wave, space_width] = get_sampled_wavefunction(waves, t, adjustment1, number_of_samples, k, plot_input, plot_angular_spectrum)     
+function [sampled_wave, space_width] = get_sampled_wavefunction4(waves, t, adjustment1, number_of_samples, k, plot_input, plot_angular_spectrum)     
     space_width = pi * number_of_samples / k * adjustment1;
     samples = linspace(-1/2, 1/2, number_of_samples) * space_width;
     [x, y] = meshgrid(samples);
@@ -72,11 +92,38 @@ function [sampled_wave, space_width] = get_sampled_wavefunction(waves, t, adjust
         plot_wavefunction_2d(sampled_wave, x, y, labels)
     end
     sampled_wave = propagate_wave(sampled_wave, 0.05, space_width, k, number_of_samples, plot_angular_spectrum)...
-     .* exp(1i * (phase_y2(1) .* (-y-V*t) + phase_y2(2) .* (-y-V*t).^2 + phase_y2(3) .* (-y-V*t).^3 + phase_y2(4) .* (-y-V*t).^4))...
-     .* exp(1i * (x.^2 + y.^2) * waves.focus * 2*pi ./ (6e-3).^2 ./ 2)...  
+     .* exp(1i * (phase_y2(1) .* (-y-V*t) + phase_y2(2) .* (-y-V*t).^2 + phase_y2(3) .* (-y-V*t).^3 + phase_y2(4) .* (-y-V*t).^4)); 
+    if plot_input
+        plot_wavefunction_2d(sampled_wave, x, y, labels)
+    end
+    sampled_wave = sampled_wave .* exp(1i * (x.^2 + y.^2) * waves.focus * 2*pi ./ (6e-3).^2 ./ 2)...  
      .* exp(1i * (x.^2 + y.^2).^2 * waves.spherical * 2*pi ./ (6e-3).^4 ./ 4); 
     if plot_input
         plot_wavefunction_2d(sampled_wave, x, y, labels)
+    end
+end
+
+function [sampled_wave, space_width] = get_sampled_wavefunction6(waves, t, adjustment1, number_of_samples, k, plot_input, plot_angular_spectrum)     
+    space_width = pi * number_of_samples / k * adjustment1;
+    samples = linspace(-1/2, 1/2, number_of_samples) * space_width;
+    [x, y] = meshgrid(samples);
+    
+    V = 613;
+    labels = {'x', 'y'};
+    angles = linspace(0,5*pi/3,6);
+    wave_func = waves{1};
+    sampled_wave = exp(-(x.^2 + y.^2)/2/(6e-3).^2) ...
+        .* exp(1i * 2 * pi * wave_func(t - (cos(angles(1)) .* x + sin(angles(1)) .* y))/V); 
+    if plot_input
+        plot_wavefunction_2d(sampled_wave, x, y, labels)
+    end
+    for n = 2:6
+        wave_func = waves{n};
+        sampled_wave = propagate_wave(sampled_wave, 0.05, space_width, k, number_of_samples, plot_angular_spectrum)...
+         .* exp(1i * 2 * pi * wave_func(t - (cos(angles(n)) .* x + sin(angles(n)) .* y))/V); 
+        if plot_input
+            plot_wavefunction_2d(sampled_wave, x, y, labels)
+        end
     end
 end
 
