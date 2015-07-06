@@ -1,11 +1,11 @@
 function aol_psfs()
-    adjustment1 = 5e2;
+    adjustment1 = 5e2; % ratio of k to max(kx)
     adjustment2 = 1e0;
     number_of_samples = 2.^10 - 1; % computational speed vs accuracy
     k = 2*pi/920e-9;
-    z_list = linspace(-20,20,99)*1e-6;
+    z_list = linspace(0,100,99)*1e-6;
     z_plane_no = round(size(z_list,2)/2); % which z plane is plotted for the xy psf 
-    do_plot = struct('input', 1, 'focal_plane', 1, 'angular_spec', 1);
+    do_plot = struct('input', 0, 'focal_plane', 0, 'angular_spec', 0);
     
     aol4_psfs(k, number_of_samples, adjustment1, adjustment2, z_list, z_plane_no, do_plot);
     %aol6_psfs(k, number_of_samples, adjustment1, adjustment2, z_list, z_plane_no, do_plot);
@@ -13,12 +13,13 @@ end
 
 function aol4_psfs(k, number_of_samples, adjustment1, adjustment2, z_list, z_plane_no, do_plot)
     waves = struct();
-    waves.x1 = [0, -1, 0, 0, 0];
-    waves.y1 = [0, 1, 0, 0, 0];    
-    waves.x2 = [0, -1, 0, 0, 0];
-    waves.y2 = [0, 1, 0, 0, 0];    
+    waves.x1 = [0, 10, 0, 0, 0];
+    waves.y1 = [0, 10, 0, 0, 0];    
+    waves.x2 = [0, 10, 1, 0, 0];
+    waves.y2 = [0, 10, 0.1, 0, 0];    
     waves.focus = 0;
     waves.spherical = 0;
+    waves.ac_angle = 0; % walk off angle in degrees
     time = 0e-6;
     
     [sampled_wave_2d, space_width] = get_sampled_wavefunction4(waves, time, adjustment1, number_of_samples, k, do_plot.input, do_plot.angular_spec);  
@@ -27,7 +28,7 @@ end
 
 function aol6_psfs(k, number_of_samples, adjustment1, adjustment2, z_list, z_plane_no, do_plot)
     waves = cell(6,1);
-    scaling = 0.5e6;
+    scaling = 20e6;
     waves{1} = @(t) t.^2 * scaling;
     waves{2} = @(t) t.^2 * scaling;    
     waves{3} = @(t) t.^2 * scaling;
@@ -74,9 +75,10 @@ function [sampled_wave, space_width] = get_sampled_wavefunction4(waves, t, adjus
     phase_x2 = k * (waves.x2 .* scale_factors);
     phase_y2 = k * (waves.y2 .* scale_factors);   
  
+    envelope = exp(-(x.^2 + y.^2)/2/(6e-3).^2);% .* (sqrt(x.^2 + y.^2) < 5e-3);
     V = 613;
     labels = {'x', 'y'};
-    sampled_wave = exp(-(x.^2 + y.^2)/2/(6e-3).^2)... 
+    sampled_wave = envelope... 
      .* exp(1i * (phase_x1(1) .* (x-V*t) + phase_x1(2) .* (x-V*t).^2 + phase_x1(3) .* (x-V*t).^3 + phase_x1(4) .* (x-V*t).^4));
     if plot_input
         plot_wavefunction_2d(sampled_wave, x, y, labels)
@@ -96,8 +98,10 @@ function [sampled_wave, space_width] = get_sampled_wavefunction4(waves, t, adjus
     if plot_input
         plot_wavefunction_2d(sampled_wave, x, y, labels)
     end
-    sampled_wave = sampled_wave .* exp(1i * (x.^2 + y.^2) * waves.focus * 2*pi ./ (6e-3).^2 ./ 2)...  
-     .* exp(1i * (x.^2 + y.^2).^2 * waves.spherical * 2*pi ./ (6e-3).^4 ./ 4); 
+    sampled_wave = sampled_wave .* exp(1i * (...  
+        (x.^2 + y.^2) * waves.focus * 2*pi ./ (6e-3).^2 ./ 2 ...  
+        + tand(waves.ac_angle) * 0.5 .* (x.^3 + y.^3) .* (2 * (phase_x1(2) + phase_x2(2)) / k).^2  * k/(2*pi)...  
+        + (x.^2 + y.^2).^2 * waves.spherical * 2*pi ./ (6e-3).^4 ./ 4)); 
     if plot_input
         plot_wavefunction_2d(sampled_wave, x, y, labels)
     end
