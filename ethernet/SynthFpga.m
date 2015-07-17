@@ -21,11 +21,11 @@ classdef SynthFpga < handle
         function load_plane_size(this)
             length = 6;
             data = [split_2_bytes(length) SynthComs.load_plane_size.v 0 100 0 100 0];
-            send_packet(this.dest_addr, this.send_addr, data);
+            res = send_packet(this.dest_addr, this.send_addr, data);
         end
         
         function load_plane_records_queue(this, drive_coeffs)
-            start_index = 0;
+            start_index = 1;
             num_recs = length(drive_coeffs);
             while start_index < num_recs
                 end_index = start_index + 13;
@@ -42,7 +42,7 @@ classdef SynthFpga < handle
             data = [0 0 SynthComs.load_plane_records.v 0 0 100 0 100 0 split_2_bytes(start_index) split_2_bytes(end_index) reshape(recs',1,[])];
             data_length = length(data);
             data(1:2) = split_2_bytes(data_length);
-            send_packet(this.dest_addr, this.send_addr, data);
+            res = send_packet(this.dest_addr, this.send_addr, data);
         end
     end    
 end

@@ -13,6 +13,8 @@ function [a, b, ticksPerRamp] = integration_with_driver()
     aodMode = -1;
     imagingMode = 'structural';
     systemClockFreq = 200e6;
+    dataTimeInterval = 1/systemClockFreq;
+    aodAperture = 16e-3;
     
     [baseFreq, linearChirp, rampTime, isMiniscan] = microscope_driver(...
         imagingMode,...    
