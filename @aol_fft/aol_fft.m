@@ -5,7 +5,7 @@ classdef aol_fft
         adjustment2 = 1e0;
         number_of_samples = 2.^8 - 1; % computational speed vs accuracy
         k = 2*pi/850e-9;
-        z_list = linspace(60,90,99)*1e-6;
+        z_list = linspace(20,120,199)*1e-6;
         do_plot = struct('input', 0, 'focal_plane', 0, 'angular_spec', 0);
         V = 613;
     end
@@ -39,7 +39,7 @@ classdef aol_fft
                 end
             end
 
-            focal_length = inv(num_aods * phase(2) / obj.k)
+            focal_length = 1 ./ (num_aods * phase(2) / obj.k);
             sampled_wave = sampled_wave .* (sqrt(x.^2 + y.^2) < 6e-3) .* exp(1i * (...  
                 (x.^2 + y.^2) * waves.focus * 2*pi ./ (6e-3).^2 ./ 2 ...  
                 + tand(waves.ac_angle) * 0.5 .* (x.^3 + y.^3) .* focal_length.^-2  * obj.k/(2*pi)...  
