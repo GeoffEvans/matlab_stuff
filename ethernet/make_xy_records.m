@@ -4,7 +4,8 @@ function recs = make_xy_records( as, bs )
     x2 = make_records(as(:,3), bs(:,3));
     y2 = make_records(as(:,4), bs(:,4));
 
-    recs = [x1, y1, x2, y2];
+    recs_raw = [x1, y1, x2, y2];
+    recs = reshape(recs_raw',1,[]);
 end
 
 function r = make_records(a, b)

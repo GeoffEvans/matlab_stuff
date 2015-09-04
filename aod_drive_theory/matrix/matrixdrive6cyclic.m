@@ -2,7 +2,7 @@ function procd = matrixdrive6cyclic()
 
 syms c1 c2 c3 c4 c5 c6 f v L
 
-L = 5e-2
+L = 4.554e-2
 
 l1 = L;
 l2 = L;
@@ -15,8 +15,8 @@ I2 = sym(eye(2));
 I4 = sym(eye(4));
 C = cos(sym(2*pi/3));
 S = sin(sym(2*pi/3));
-R14 = [1 0; 0 0];
-R25 = [C*C S*C; C*S S*S];
+R14 = [C*C S*C; C*S S*S];
+R25 = [1 0; 0 0];
 R36 = [C*C -S*C; -C*S S*S];
 
 P1 = [I2 I2*l1;zeros(2) I2];
@@ -45,14 +45,14 @@ D36 = P6*(Q6*P5*Q5*P4*Q4*P3*c3-I4*c6);
 % C D1(1,3) - S D1(1,4) == C D1(2,3) - S D1(2,4) == 0
 
 D36q = D36(1:2,3:4) * [C;-S];
-D25q = D25(1:2,3:4) * -[C;S];
-D14q = D14(1:2,3:4) * [1;0];
+D25q = D25(1:2,3:4) * -[1;0];
+D14q = D14(1:2,3:4) * [C;S];
 
-%unit_vector = [1;0]; % x-direction
+unit_vector = [1;0]; % x-direction
 %unit_vector = 1/sqrt(2) * [1;1]; % 45 degrees
-unit_vector = 1/2 * [1;sqrt(3)]; % AOD 2
+%unit_vector = 1/2 * [1;sqrt(3)]; % AOD 2
 
-D = D36q + D14q + D25q;% - v * unit_vector; % v is scan velocity / 613
+D = D36q + D14q + D25q - v * unit_vector; % v is scan velocity / 613
 
 eqs = [M(1:2,1:2) D];
 eqs = eqs(:);
