@@ -21,28 +21,28 @@ classdef SynthFpga < handle
         function load_plane_size(this)
             length = 6;
             data = [split_2_bytes(length) SynthComs.load_plane_size.v 0 100 0 100 0];
-            send_packet(this.dest_addr, this.send_addr, data);
+            res = send_packet_mock(this.dest_addr, this.send_addr, data);
         end
         
         function load_plane_records_queue(this, drive_coeffs)
-            start_index = 0;
-            num_recs = length(drive_coeffs);
+            start_index = 1;
+            num_recs = size(drive_coeffs.a, 1);
             while start_index < num_recs
                 end_index = start_index + 13;
                 if end_index > num_recs
                     end_index = num_recs; % catch the end
                 end
-                this.load_plane_records(drive_coeffs(start_index:end_index), start_index, end_index);
+                this.load_plane_records(drive_coeffs, start_index, end_index);
                 start_index = start_index + 14;
             end
         end
         
         function load_plane_records(this, drive_coeffs, start_index, end_index)
-            recs = make_xy_records(drive_coeffs.a, drive_coeffs.b);
+            recs = make_xy_records(drive_coeffs.a(start_index:end_index), drive_coeffs.b(start_index:end_index), drive_coeffs.t(start_index:end_index));
             data = [0 0 SynthComs.load_plane_records.v 0 0 100 0 100 0 split_2_bytes(start_index) split_2_bytes(end_index) reshape(recs',1,[])];
             data_length = length(data);
             data(1:2) = split_2_bytes(data_length);
-            send_packet(this.dest_addr, this.send_addr, data);
+            res = send_packet_mock(this.dest_addr, this.send_addr, data);
         end
     end    
 end
