@@ -8,6 +8,8 @@ classdef aol_fft
         z_list = linspace(-100,100,199)*1e-6;
         do_plot = struct('input', 0, 'focal_plane', 0, 'angular_spec', 0);
         V = 613;
+        half_width = 7.5e-3;
+        scaling = 0.8;
     end
     
     methods
@@ -26,12 +28,13 @@ classdef aol_fft
             directions = linspace(0, 2 * pi, num_aods + 1);
             T = obj.V * t;
             r = arrayfun(@(theta) x.*cos(theta) + y.*sin(theta), directions, 'uniformoutput', 0);
-            envelope = exp(-(x.^2 + y.^2)/2/(4e-3).^2);
+            gaussian = exp(-(x.^2 + y.^2)/2/(4e-3).^2);
+            aperture = (sqrt(x.^2 + y.^2) < obj.half_width);
             labels = {'x', 'y'};
             
-            sampled_wave = envelope;
+            sampled_wave = gaussian .* aperture;
             for n = 1:num_aods
-                phase = 2*pi * waves.aods{n} ./ (6e-3).^(1:5); % take aperture to be 12mm because of scaling by relay
+                phase = 2*pi * waves.aods{n} ./ obj.half_width .^ (1:5);
                 sampled_wave = obj.propagate_wave(sampled_wave, distances(n), space_width, 1)...
                     .* exp(1i * (phase(1) .* (r{n}-T) + phase(2) .* (r{n}-T).^2 + phase(3) .* (r{n}-T).^3 + phase(4) .* (r{n}-T).^4));
                 if obj.do_plot.input
@@ -39,11 +42,9 @@ classdef aol_fft
                 end
             end
 
-            focal_length = 1 ./ (num_aods * phase(2) / obj.k);
-            sampled_wave = sampled_wave .* (sqrt(x.^2 + y.^2) < 6e-3) .* exp(1i * (...  
-                (x.^2 + y.^2) * waves.focus * 2*pi ./ (6e-3).^2...  
-                + tand(waves.ac_angle) * 0.5 .* (x.^3 + y.^3) .* focal_length.^-2  * obj.k/(2*pi)...  
-                + (x.^2 + y.^2).^2 ./ (6e-3).^4 * waves.spherical * 2*pi)); 
+            sampled_wave = sampled_wave .* exp(1i * (...  
+                (x.^2 + y.^2) * waves.focus * 2*pi ./ obj.half_width .^ 2 ...  
+                + (x.^2 + y.^2).^2 ./ obj.half_width .^4 * waves.spherical * 2*pi)); 
             
             if obj.do_plot.input
                 obj.plot_wavefunction_2d(sampled_wave, x, y, labels)
@@ -58,7 +59,7 @@ classdef aol_fft
         function [u, v, focal_plane_wave_2d, space_width] = get_focal_plane_wavefunction(obj, sampled_wave_2d, space_width)
             focal_plane_wave_2d = fftshift(fft2(ifftshift(sampled_wave_2d))); % transform to focal plane
             integer_list = floor(-obj.number_of_samples/2+0.5):floor(obj.number_of_samples/2-0.5);
-            [u, v] = meshgrid(integer_list * 2 * pi / space_width / obj.k * 8e-3); % new positions in the focal plane   
+            [u, v] = meshgrid(integer_list * 2 * pi / space_width * obj.scaling / obj.k * 8e-3); % new positions in the focal plane   
             space_width = (max(u(:)) - min(u(:))) * obj.adjustment2;
             if obj.do_plot.focal_plane
                 obj.plot_wavefunction_2d(focal_plane_wave_2d, u, v, {'x focus', 'y focus'})
@@ -111,6 +112,8 @@ classdef aol_fft
             [zz, xx] = meshgrid(obj.z_list, max(x,[],1));
             h = pcolor(xx, zz, abs(squeeze(propagated_wave_2d(:,round(size(x,2)/2),:))).^1);
             set(h,'EdgeColor','none')
+            
+            fprintf('max: %f', max(abs(propagated_wave_2d(:))))
         end
         
         function res = get_psf_dimensions(~, field_3d, x, y, z)
