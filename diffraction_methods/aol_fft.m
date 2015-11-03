@@ -1,30 +1,38 @@
 classdef aol_fft
     
     properties
-        adjustment1 = 5e2; % ratio of k to max(kx)
-        adjustment2 = 1e0;
+        adjustment1 = 5e2; % adjustments as necessary for the FFT - sets ratio of k to max(kx)
+        adjustment2 = 1e0; % as above
         number_of_samples = 2.^8 - 1; % computational speed vs accuracy
-        k = 2*pi/850e-9;
-        z_list = linspace(-100,100,199)*1e-6;
-        do_plot = struct('input', 0, 'focal_plane', 0, 'angular_spec', 0);
-        V = 613;
-        half_width = 7.5e-3;
-        scaling = 0.8;
+        k = 2*pi/850e-9; % wavevector
+        z_list = linspace(-100,100,199)*1e-6; % distances from the nominal focal plane of the objective to evaluate the field at 
+        do_plot = struct('input', 0, 'focal_plane', 0, 'angular_spec', 0); % plotting of the intermediate stages useful for debugging
+        V = 613; % speed of sound in TeO2
+        half_width = 7.5e-3; % half the aperture width
+        scaling = 0.8; % scaling by the relay between AOL and objective
     end
     
     methods
-        function [propagated_wave, x, y] = calculate_psf_through_aol(obj, waves, time)
-            [sampled_wave_2d, space_width] = obj.get_sampled_wavefunction(waves, time);
-            [propagated_wave, x, y] = obj.calculate_psf(sampled_wave_2d, space_width);
+        function [propagated_wave_max, x, y] = calculate_psf_through_aol(obj, waves, time)
+            % take a number of waves of phase shift for each AOD and a time
+            % to calculate the PSF
+            propagated_wave_max = 0;
+            for t = 0.5e-6;
+                [sampled_wave_2d, space_width] = obj.get_sampled_wavefunction(waves, time);
+                [propagated_wave, x, y] = obj.calculate_psf(sampled_wave_2d, space_width);
+                propagated_wave_max = max(propagated_wave_max, propagated_wave);
+            end
         end
         
         function [sampled_wave, space_width] = get_sampled_wavefunction(obj, waves, t)     
+            %% take a number of waves of phase shift for each AOD and a time
+            % to calculate the wave out of the last AOD
             num_aods = numel(waves.aods);
             space_width = pi * obj.number_of_samples / obj.k * obj.adjustment1;
             samples = linspace(-1/2, 1/2, obj.number_of_samples) * space_width;
             [x, y] = meshgrid(samples);
 
-            distances = [0, ones(1,num_aods-1)*0.0]; %qq
+            distances = [0, ones(1,num_aods-1)*0.05]; %qq
             directions = linspace(0, 2 * pi, num_aods + 1);
             T = obj.V * t;
             r = arrayfun(@(theta) x.*cos(theta) + y.*sin(theta), directions, 'uniformoutput', 0);
@@ -52,11 +60,14 @@ classdef aol_fft
         end
         
         function [propagated_wave, x, y] = calculate_psf(obj, sampled_wave_2d, space_width)
+            % taking the field into the objective, calculate the field over a volume to find the PSF
             [x, y, focal_plane_wave_2d, space_width] = obj.get_focal_plane_wavefunction(sampled_wave_2d, space_width);
             propagated_wave = obj.propagate_wave(focal_plane_wave_2d, obj.z_list, space_width, 4/3);
         end
 
         function [u, v, focal_plane_wave_2d, space_width] = get_focal_plane_wavefunction(obj, sampled_wave_2d, space_width)
+            % FFT the wave into the (infinity corrected) objective to find
+            % the field in the nominal focal plane
             focal_plane_wave_2d = fftshift(fft2(ifftshift(sampled_wave_2d))); % transform to focal plane
             integer_list = floor(-obj.number_of_samples/2+0.5):floor(obj.number_of_samples/2-0.5);
             [u, v] = meshgrid(integer_list * 2 * pi / space_width * obj.scaling / obj.k * 8e-3); % new positions in the focal plane   
@@ -67,6 +78,7 @@ classdef aol_fft
         end
         
         function propagated_wave = propagate_wave(obj, wave_2d, distance, space_width, ref_ind)
+            % use FFT to propagate the field backwards and forwards
             count = [0:floor((obj.number_of_samples - 1)/2) floor(-(obj.number_of_samples - 1)/2):-1];
             [k_x, k_y] = meshgrid(count * 2 * pi / space_width);
             ft_wave_2d = fft2(ifftshift(wave_2d)); % recentre wave with fftshift
@@ -117,6 +129,7 @@ classdef aol_fft
         end
         
         function res = get_psf_dimensions(~, field_3d, x, y, z)
+            % use FWHM measurements to quantify the PSF dimensions
             r = sqrt(x.^2 + y.^2);
             max_intensity_sqr = max(abs(field_3d(:)).^4);
             [row, col, depth] = find(field_3d == max_intensity_sqr);
