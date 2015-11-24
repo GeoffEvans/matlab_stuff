@@ -1,8 +1,7 @@
 classdef aol_fft
     
     properties
-        adjustment1 = 5e2; % adjustments as necessary for the FFT - sets ratio of k to max(kx)
-        adjustment2 = 1e0; % as above
+        adjustment = 5e2; % adjustments as necessary for the FFT - sets ratio of k to max(kx)
         number_of_samples = 2.^8 - 1; % computational speed vs accuracy
         k = 2*pi/800e-9; % wavevector
         z_list = linspace(-100,100,199)*1e-6; % distances from the nominal focal plane of the objective to evaluate the field at 
@@ -10,7 +9,11 @@ classdef aol_fft
         V = 613; % speed of sound in TeO2
         half_width = 7.5e-3; % half the aperture width
         scaling = 0.8; % scaling by the relay between AOL and objective
-        focal_len = 8e-3; % focal length of the objective
+        mag = 20;
+        tube_focal_len = 160e-3;
+        beam_sigma = 4e-3; % 68% of field within +- beam_sigma, 95% of field within +- 2 beam_sigma, equiv. beam intensity falls off to 1/e after beam_sigma
+        pwr = 1;
+        cm = 'jet';
     end
     
     methods
@@ -18,8 +21,9 @@ classdef aol_fft
             % take a number of waves of phase shift for each AOD and a time
             % to calculate the PSF
             propagated_wave_max = 0;
-            for t = 0.5e-6;
-                [sampled_wave_2d, space_width] = obj.get_sampled_wavefunction(waves, time);
+            for t = time;
+                t
+                [sampled_wave_2d, space_width] = obj.get_sampled_wavefunction(waves, t);
                 [propagated_wave, x, y] = obj.calculate_psf(sampled_wave_2d, space_width);
                 propagated_wave_max = max(propagated_wave_max, propagated_wave);
             end
@@ -29,7 +33,7 @@ classdef aol_fft
             %% take a number of waves of phase shift for each AOD and a time
             % to calculate the wave out of the last AOD
             num_aods = numel(waves.aods);
-            space_width = pi * obj.number_of_samples / obj.k * obj.adjustment1;
+            space_width = pi * obj.number_of_samples / obj.k * obj.adjustment;
             samples = linspace(-1/2, 1/2, obj.number_of_samples) * space_width;
             [x, y] = meshgrid(samples);
 
@@ -37,26 +41,30 @@ classdef aol_fft
             directions = linspace(0, 2 * pi, num_aods + 1);
             T = obj.V * t;
             r = arrayfun(@(theta) x.*cos(theta) + y.*sin(theta), directions, 'uniformoutput', 0);
-            gaussian = exp(-(x.^2 + y.^2)/2/(2e-3).^2);
+            gaussian = exp(-(x.^2 + y.^2)/2/(obj.beam_sigma).^2);
             aperture_in = (sqrt(x.^2 + y.^2) < obj.half_width);
             aperture_out = (sqrt(x.^2 + y.^2) < obj.half_width ./ obj.scaling);
-            labels = {'x', 'y'};
+            labels = {'n', 'x', 'y'};
             
             sampled_wave = gaussian .* aperture_in;
             for n = 1:num_aods
                 phase = 2*pi * waves.aods{n} ./ obj.half_width .^ (1:5);
                 sampled_wave = obj.propagate_wave(sampled_wave, distances(n), space_width, 1)...
                     .* exp(1i * (phase(1) .* (r{n}-T) + phase(2) .* (r{n}-T).^2 + phase(3) .* (r{n}-T).^3 + phase(4) .* (r{n}-T).^4));
+                labels{1} = n;
+                
                 if obj.do_plot.input
                     obj.plot_wavefunction_2d(sampled_wave, x, y, labels)
                 end
             end
 
+            figure; hold; plot(unwrap(ifftshift(angle(sampled_wave(ceil(size(sampled_wave,2)/2),:)))), 'k'); plot(unwrap(ifftshift(angle(sampled_wave(:,ceil(size(sampled_wave,2)/2))))), 'r--');
             sampled_wave = sampled_wave .* aperture_out .* exp(1i * (...  
                 (x.^2 + y.^2) * waves.focus * 2*pi ./ obj.half_width .^ 2 ...  
                 + (x.^2 + y.^2).^2 ./ obj.half_width .^4 * waves.spherical * 2*pi)); 
             
             if obj.do_plot.input
+                labels{1} = 'input to relay and obj';
                 obj.plot_wavefunction_2d(sampled_wave, x, y, labels)
             end
         end
@@ -68,14 +76,15 @@ classdef aol_fft
         end
 
         function [u, v, focal_plane_wave_2d, space_width] = get_focal_plane_wavefunction(obj, sampled_wave_2d, space_width)
-            % FFT the wave into the (infinity corrected) objective to find
-            % the field in the nominal focal plane
+            % FFT the wave into the (infinity corrected) objective to find the field in the nominal focal plane
             focal_plane_wave_2d = fftshift(fft2(ifftshift(sampled_wave_2d))); % transform to focal plane
             integer_list = floor(-obj.number_of_samples/2+0.5):floor(obj.number_of_samples/2-0.5);
-            [u, v] = meshgrid(integer_list * 2 * pi / space_width * obj.scaling / obj.k * obj.focal_len); % new positions in the focal plane   
-            space_width = (max(u(:)) - min(u(:))) * obj.adjustment2;
+            k_x_discrete = integer_list * 2 * pi / (space_width * obj.scaling);
+            plane_wave_angle_air = k_x_discrete / obj.k;
+            [u, v] = meshgrid(plane_wave_angle_air * obj.tube_focal_len / obj.mag); % new positions in the focal plane   
+            space_width = (max(u(:)) - min(u(:)));
             if obj.do_plot.focal_plane
-                obj.plot_wavefunction_2d(focal_plane_wave_2d, u, v, {'x focus', 'y focus'})
+                obj.plot_wavefunction_2d(focal_plane_wave_2d, u, v, {'focal plane', 'x focus', 'y focus'})
             end
         end
         
@@ -96,7 +105,7 @@ classdef aol_fft
             propagated_wave = squeeze(propagated_wave);
             
             if obj.do_plot.angular_spec
-                obj.plot_wavefunction_2d(fftshift(ft_wave_2d), fftshift(k_x), fftshift(k_y), {'kx', 'ky'})
+                obj.plot_wavefunction_2d(fftshift(ft_wave_2d), fftshift(k_x), fftshift(k_y), {'ang spec', 'kx', 'ky'})
             end
         end
         
@@ -104,33 +113,67 @@ classdef aol_fft
             figure()
             subplot(1,2,1)
             hh = pcolor(x,y,abs(wave_function_2d));
-            xlabel(labels{1})
-            ylabel(labels{2})
+            %idx = ceil(size(x)/2);
+            %plot(x(idx,:),abs(wave_function_2d(idx,:)).^2)
+            title(labels{1})
+            xlabel(labels{2})
+            ylabel(labels{3})
             set(hh,'EdgeColor','none')
 
             subplot(1,2,2)
             hh = pcolor(x,y,angle(wave_function_2d));
-            xlabel(labels{1})
-            ylabel(labels{2})
+            title(labels{1})
+            xlabel(labels{2})
+            ylabel(labels{3})
             set(hh,'EdgeColor','none')
         end
         
         function xy_xz_plot_psf(obj, propagated_wave_2d, x, y, z_plane_frac)
             figure(); 
-            subplot(1,2,1)
-            h = pcolor(x, y, abs(propagated_wave_2d(:,:,round(z_plane_frac*size(obj.z_list,2)))).^4);
+            %subplot(1,2,1)
+            idx = 2.^8+(1-2^7:2^7-1);
+            %h = pcolor(x(idx,idx), y(idx,idx), abs(propagated_wave_2d(idx,idx,round(z_plane_frac*size(obj.z_list,2)))).^obj.pwr);
+            h = pcolor(x, y, abs(propagated_wave_2d(:,:,round(z_plane_frac*size(obj.z_list,2)))).^obj.pwr);
             set(h,'EdgeColor','none')
             axis equal
-
-            subplot(1,2,2)
+            axis tight
+            axis off
+            colormap(obj.cm)
+            %caxis([0,2000^obj.pwr])
+            set(gcf, 'Position', [0,0,800,800]);
+            set(gca,'position',[0 0 1 1],'units','normalized')
+            
+            figure
+            %subplot(1,2,2)
             [zz, xx] = meshgrid(obj.z_list, max(x,[],1));
-            %h = pcolor(xx, zz, abs(squeeze(propagated_wave_2d(round(size(x,2)/2),:,:))).^1);
-            [zz_idx, xx_idx] = meshgrid(1:numel(obj.z_list), 1:size(x,2));
-            h = pcolor(xx*sqrt(2), zz, abs(interp3(propagated_wave_2d, xx_idx, xx_idx, zz_idx)).^4);
-            
+            h = pcolor(xx, zz, abs(squeeze(propagated_wave_2d(round(size(x,2)/2),:,:))).^obj.pwr);
+            %[zz_idx, xx_idx] = meshgrid(1:numel(obj.z_list), 1:size(x,2));
+            %h = pcolor(xx*sqrt(2), zz, abs(interp3(propagated_wave_2d, xx_idx, xx_idx, zz_idx)).^1);
+            axis equal
+            axis tight
             set(h,'EdgeColor','none')
+            colormap(obj.cm)
+            %caxis([0,2000^obj.pwr])
+            axis off
+            set(gcf, 'Position', [0,0,800,800]);
+            set(gca,'position',[0 0 1 1],'units','normalized')
             
-            fprintf('max: %f\n', max(abs(propagated_wave_2d(:))))
+            figure
+            %subplot(1,2,2)
+            [zz, xx] = meshgrid(obj.z_list, max(x,[],1));
+            h = pcolor(xx, zz, abs(squeeze(propagated_wave_2d(:,round(size(x,2)/2),:))).^obj.pwr);
+            %[zz_idx, xx_idx] = meshgrid(1:numel(obj.z_list), 1:size(x,2));
+            %h = pcolor(xx*sqrt(2), zz, abs(interp3(propagated_wave_2d, xx_idx, xx_idx, zz_idx)).^1);
+            axis equal
+            axis tight
+            set(h,'EdgeColor','none')
+            colormap(obj.cm)
+            %caxis([0,2000^obj.pwr])
+            axis off
+            set(gcf, 'Position', [0,0,800,800]);
+            set(gca,'position',[0 0 1 1],'units','normalized')
+            
+            %fprintf('max: %f\n', max(abs(propagated_wave_2d(:))))
         end
         
         function res = get_psf_dimensions(~, field_3d, x, y, z)
@@ -145,8 +188,13 @@ classdef aol_fft
 
             half_or_more_z = squeeze(max(max(abs(field_3d)))).^4 >= max_intensity_sqr/2;
             z_res = max(z(half_or_more_z)) - min(z(half_or_more_z));
+            
+            max_val = max(abs(field_3d(:)));
+            r_pos = x(max(abs(field_3d), [], 3) == max_val);
+            z_pos = z(max(max(abs(field_3d), [], 1), [], 2) == max_val);
 
-            res = [[r_res, z_res] * 1e6, max_intensity_sqr * 1e-12];
+            max_intensity_sqr = max(max(abs(field_3d(:,:,ceil(numel(z)/2))).^4));
+            res = [[r_pos, z_pos] * 1e6, [r_res, z_res] * 1e6, max_intensity_sqr * 1e-12];
         end
     end
 end
