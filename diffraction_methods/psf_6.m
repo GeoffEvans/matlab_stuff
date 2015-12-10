@@ -1,10 +1,10 @@
-function psf_6(aol, time, w2f, w2s, w3, w4, ws, wf, slice)
-    a1 = [0, w2f-w2s, w3, w4, 0];
-    a2 = [0, w2f    , w3, w4, 0];    
-    a3 = [0, w2f    , w3, w4, 0];
-    a4 = [0, w2f+w2s, w3, w4, 0];    
-    a5 = [0, w2f    , w3, w4, 0];    
-    a6 = [0, w2f    , w3, w4, 0];    
+function [x_fwhm, z_fwhm] = psf_6(aol, time, w1, w2f, w2s, w3, w4, w5, ws, wf, slice)
+    a1 = [w1, w2f-w2s, w3, w4, w5];
+    a2 = [w1, w2f    , w3, w4, w5];    
+    a3 = [w1, w2f    , w3, w4, w5];
+    a4 = [w1, w2f+w2s, w3, w4, w5];    
+    a5 = [w1, w2f    , w3, w4, w5];    
+    a6 = [w1, w2f    , w3, w4, w5];    
     
     waves = struct();
     waves.focus = wf;
@@ -14,5 +14,7 @@ function psf_6(aol, time, w2f, w2s, w3, w4, ws, wf, slice)
     
     [propagated_wave, x, y] = aol.calculate_psf_through_aol(waves, time);
     aol.xy_xz_plot_psf(propagated_wave, x, y, slice);
-    get_psf_dimensions(aol, propagated_wave, x, y, aol.z_list)
+    res = get_psf_dimensions(aol, propagated_wave, x, y, aol.z_list);
+    x_fwhm = res(3);
+    z_fwhm = res(4);
 end

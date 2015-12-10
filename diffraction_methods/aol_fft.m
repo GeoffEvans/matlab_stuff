@@ -5,7 +5,7 @@ classdef aol_fft
         number_of_samples = 2.^9 - 1; % computational speed vs accuracy
         k = 2*pi/800e-9; % wavevector
         z_list = linspace(-100,100,199)*1e-6; % distances from the nominal focal plane of the objective to evaluate the field at 
-        do_plot = struct('aods', 0, 'input', 1, 'focal_plane', 0, 'angular_spec', 0); % plotting of the intermediate stages useful for debugging
+        do_plot = struct('aods', 0, 'input', 0, 'focal_plane', 0, 'angular_spec', 0); % plotting of the intermediate stages useful for debugging
         V = 613; % speed of sound in TeO2
         half_width = 7.5e-3; % half the aperture width
         scaling = 0.8; % scaling by the relay between AOL and objective
@@ -14,6 +14,7 @@ classdef aol_fft
         beam_sigma = 4e-3; % 68% of field within +- beam_sigma, 95% of field within +- 2 beam_sigma, equiv. beam intensity falls off to 1/e after beam_sigma
         pwr = 1;
         cm = 'jet';
+        spacing = 0.04554;
     end
     
     methods
@@ -22,9 +23,10 @@ classdef aol_fft
             % to calculate the PSF
             propagated_wave_max = 0;
             for t = time;
-                t
+                display(t)
                 [sampled_wave_2d, space_width] = obj.get_sampled_wavefunction(waves, t);
                 [propagated_wave, x, y] = obj.calculate_psf(sampled_wave_2d, space_width);
+                propagated_wave = propagated_wave ./ max(propagated_wave(:));
                 propagated_wave_max = max(propagated_wave_max, propagated_wave);
             end
         end
@@ -37,7 +39,7 @@ classdef aol_fft
             samples = linspace(-1/2, 1/2, obj.number_of_samples) * space_width;
             [x, y] = meshgrid(samples);
 
-            distances = [0, ones(1,num_aods-1)*0.04554]; %qq
+            distances = [0, ones(1,num_aods-1)*obj.spacing];
             directions = linspace(0, 2 * pi, num_aods + 1);
             T = obj.V * t;
             r = arrayfun(@(theta) x.*cos(theta) + y.*sin(theta), directions, 'uniformoutput', 0);
@@ -129,20 +131,20 @@ classdef aol_fft
         end
         
         function xy_xz_plot_psf(obj, propagated_wave_2d, x, y, z_plane_frac)
-%             figure(); 
-%             %subplot(1,2,1)
-%             idx = 2.^8+(1-2^7:2^7-1);
-%             %h = pcolor(x(idx,idx), y(idx,idx), abs(propagated_wave_2d(idx,idx,round(z_plane_frac*size(obj.z_list,2)))).^obj.pwr);
-%             h = pcolor(x, y, abs(propagated_wave_2d(:,:,round(z_plane_frac*size(obj.z_list,2)))).^obj.pwr);
-%             set(h,'EdgeColor','none')
-%             axis equal
-%             axis tight
-%             axis off
-%             colormap(obj.cm)
-%             %caxis([0,2000^obj.pwr])
-%             set(gcf, 'Position', [0,0,800,800]);
-%             set(gca,'position',[0 0 1 1],'units','normalized')
-            
+            figure(); 
+            %subplot(1,2,1)
+            %idx = 2.^8+(1-2^7:2^7-1);
+            %h = pcolor(x(idx,idx), y(idx,idx), abs(propagated_wave_2d(idx,idx,round(z_plane_frac*size(obj.z_list,2)))).^obj.pwr);
+            h = pcolor(x, y, abs(propagated_wave_2d(:,:,round(z_plane_frac*size(obj.z_list,2)))).^obj.pwr);
+            set(h,'EdgeColor','none')
+            axis equal
+            axis tight
+            axis off
+            colormap(obj.cm)
+            %caxis([0,2000^obj.pwr])
+            set(gcf, 'Position', [0,0,800,800]);
+            set(gca,'position',[0 0 1 1],'units','normalized')
+          
             figure
             %subplot(1,2,2)
             [zz, xx] = meshgrid(obj.z_list, max(x,[],1));
@@ -181,8 +183,8 @@ classdef aol_fft
             % use FWHM measurements to quantify the PSF dimensions
             r = sqrt(x.^2 + y.^2);
             max_intensity_sqr = max(abs(field_3d(:)).^4);
-            [row, col, depth] = find(field_3d == max_intensity_sqr);
-            display(2 * [row/size(field_3d,1), col/size(field_3d,2), depth/size(field_3d,3)]) % should print 1 1 1
+            %[row, col, depth] = find(abs(field_3d).^4 == max_intensity_sqr);
+            %display(2 * [row/size(field_3d,1), col/size(field_3d,2), depth/size(field_3d,3)]) % should print 1 1 1
 
             half_or_more_r = max(abs(field_3d), [], 3).^4 >= max_intensity_sqr/2;
             r_res = 2 * max(r(half_or_more_r));
@@ -195,7 +197,7 @@ classdef aol_fft
             z_pos = z(max(max(abs(field_3d), [], 1), [], 2) == max_val);
 
             max_intensity_sqr = max(max(abs(field_3d(:,:,ceil(numel(z)/2))).^4));
-            res = [[r_pos, z_pos] * 1e6, [r_res, z_res] * 1e6, max_intensity_sqr * 1e-12];
+            res = [[r_pos, z_pos] * 1e6, [r_res, z_res] * 1e6, max_intensity_sqr * 1e-17, sum(abs(field_3d(:)).^4) * 1e-19];
         end
     end
 end
