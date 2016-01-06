@@ -1,4 +1,4 @@
 *.asv
 *#
-ethernet/WpdPack/*
-mex/WpdPack/*
+*.gif
+*.png
