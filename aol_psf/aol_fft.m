@@ -1,4 +1,4 @@
-classdef aol_fft_5ramp
+classdef aol_fft
     
     properties
         adjustment = 1e2; % adjustments as necessary for the FFT - sets ratio of k to max(kx)
@@ -11,35 +11,53 @@ classdef aol_fft_5ramp
         scaling = 0.8; % scaling by the relay between AOL and objective
         mag = 20;
         tube_focal_len = 160e-3;
-        beam_sigma = 4e-3; % 68% of field within +- beam_sigma, 95% of field within +- 2 beam_sigma, equiv. beam intensity falls off to 1/e after beam_sigma
+        beam_sigma = 3e-3; % 68% of field within +- beam_sigma, 95% of field within +- 2 beam_sigma, equiv. beam intensity falls off to 1/e after beam_sigma
         pwr = 1;
         cm = 'jet';
         spacing = 0.04554;
+        ramp_width = 1e9;
+        number_of_ramps = 1;
     end
     
     methods
+        function res = get_psf(obj, time, ws, wf, aod_drives_in_waves, plot)
+            waves = struct();
+            waves.aods = aod_drives_in_waves;
+            waves.focus = wf;
+            waves.spherical = ws;
+            waves.ac_angle = 0; % walk off angle in degrees
+
+            [propagated_wave, x, y] = obj.calculate_psf_through_aol(waves, time);
+            if plot
+                figure()
+                subplot(1,2,1); obj.plot_psf_xy(propagated_wave, x, y);
+                subplot(1,2,2); obj.plot_psf_xz(propagated_wave, x);
+            end
+            res = obj.get_psf_dimensions(propagated_wave, x, y);
+        end
+
         function [propagated_wave_max, x, y] = calculate_psf_through_aol(obj, waves, time)
-            % take a number of waves of phase shift for each AOD and a time
-            % to calculate the PSF
+            % take a number of waves of phase shift for each AOD and a time to calculate the PSF
             propagated_wave_max = 0;
-            for t = time;
-                display(t)
-                [sampled_wave_2d, space_width] = obj.get_sampled_wavefunction(waves, t);
-                [propagated_wave, x, y] = obj.calculate_psf(sampled_wave_2d, space_width);
-                propagated_wave = propagated_wave ./ max(propagated_wave(:));
-                propagated_wave_max = max(propagated_wave_max, propagated_wave);
+            for wave_len = 800e-9 % [800, 800, 800-2.5, 800+2.5] * 1e-9 % [920, 920, 920-3.5, 920+3.5] * 1e-9 
+                obj.k = 2*pi/wave_len;
+                for t = time; 
+                    [sampled_wave_2d, space_width] = obj.get_sampled_wavefunction(waves, t);
+                    [propagated_wave, x, y] = obj.calculate_psf(sampled_wave_2d, space_width);
+                    propagated_wave = propagated_wave ./ max(propagated_wave(:));
+                    propagated_wave_max = max(propagated_wave_max, propagated_wave);
+                end
             end
         end
         
-        function ramp = get_ramp(obj, T, width, phase, r, n)
+        function ramp = get_ramp(obj, T, phase, r, n)
             freq = exp(1i * (phase(1) .* (r{n}-T) + phase(2) .* (r{n}-T).^2 + phase(3) .* (r{n}-T).^3 + phase(4) .* (r{n}-T).^4 + phase(5) .* (r{n}-T).^5));
-            amp = exp(-T.^2/width.^2);
+            amp = exp(-(r{n}-T).^2/obj.ramp_width.^2);
             ramp = amp .* freq;
         end
             
         function [sampled_wave, space_width] = get_sampled_wavefunction(obj, waves, t)     
-            %% take a number of waves of phase shift for each AOD and a time
-            % to calculate the wave out of the last AOD
+            % take a number of waves of phase shift for each AOD and a time to calculate the wave out of the last AOD
             num_aods = numel(waves.aods);
             space_width = pi * obj.number_of_samples / obj.k * obj.adjustment;
             samples = linspace(-1/2, 1/2, obj.number_of_samples) * space_width;
@@ -55,20 +73,19 @@ classdef aol_fft_5ramp
             labels = {'n', 'x', 'y'};
             
             sampled_wave = gaussian .* aperture_in;
-            width = 5e-6;
             for n = 1:num_aods
                 phase = 2*pi * waves.aods{n} ./ obj.half_width .^ (1:5);
-                sampled_wave = obj.propagate_wave(sampled_wave, distances(n), space_width, 1)...
-                    .* (obj.get_ramp(T, width, phase, r, n) + obj.get_ramp(T-width, width, phase, r, n)...
-                    + obj.get_ramp(T+width, width, phase, r, n) + obj.get_ramp(T+2*width, width, phase, r, n)...
-                    + obj.get_ramp(T-2*width, width, phase, r, n));
-                labels{1} = n;
+                phase_shift = 0;
+                for m = (1:obj.number_of_ramps) - 1/2 - obj.number_of_ramps/2 
+                    phase_shift = phase_shift + obj.get_ramp(T - m*obj.ramp_width, phase, r, n);
+                end
+                sampled_wave = obj.propagate_wave(sampled_wave, distances(n), space_width, 1) .* phase_shift;
                 
                 if obj.do_plot.aods
+                    labels{1} = n;
                     obj.plot_wavefunction_2d(sampled_wave, x, y, labels)
                 end
             end
-
             sampled_wave = sampled_wave .* aperture_out .* exp(1i * (...  
                 (x.^2 + y.^2) * waves.focus * 2*pi ./ obj.half_width .^ 2 ...  
                 + (x.^2 + y.^2).^2 ./ obj.half_width .^4 * waves.spherical * 2*pi)); 
@@ -124,8 +141,6 @@ classdef aol_fft_5ramp
             figure()
             subplot(1,2,1)
             hh = pcolor(x,y,abs(wave_function_2d));
-            %idx = ceil(size(x)/2);
-            %plot(x(idx,:),abs(wave_function_2d(idx,:)).^2)
             title(labels{1})
             xlabel(labels{2})
             ylabel(labels{3})
@@ -139,74 +154,48 @@ classdef aol_fft_5ramp
             set(hh,'EdgeColor','none')
         end
         
-        function xy_xz_plot_psf(obj, propagated_wave_2d, x, y, z_plane_frac)
-            figure(); 
-            %subplot(1,2,1)
-            %idx = 2.^8+(1-2^7:2^7-1);
-            %h = pcolor(x(idx,idx), y(idx,idx), abs(propagated_wave_2d(idx,idx,round(z_plane_frac*size(obj.z_list,2)))).^obj.pwr);
-            h = pcolor(x, y, abs(propagated_wave_2d(:,:,round(z_plane_frac*size(obj.z_list,2)))).^obj.pwr);
-            set(h,'EdgeColor','none')
-            axis equal
-            axis tight
-            axis off
-            colormap(obj.cm)
-            %caxis([0,2000^obj.pwr])
-            set(gcf, 'Position', [0,0,800,800]);
-            set(gca,'position',[0 0 1 1],'units','normalized')
-          
-            figure
-            %subplot(1,2,2)
-            [zz, xx] = meshgrid(obj.z_list, max(x,[],1));
-            %h = pcolor(xx, zz, abs(squeeze(propagated_wave_2d(round(size(x,2)/2),:,:))).^obj.pwr);
-            h = pcolor(xx, zz, abs(squeeze(max(propagated_wave_2d.^obj.pwr, [], 1))));
-            %[zz_idx, xx_idx] = meshgrid(1:numel(obj.z_list), 1:size(x,2));
-            %h = pcolor(xx*sqrt(2), zz, abs(interp3(propagated_wave_2d, xx_idx, xx_idx, zz_idx)).^1);
-            axis equal
-            axis tight
+        function plot_psf(obj, a, b, c)
+            h = pcolor(a, b, c);
             set(h,'EdgeColor','none')
             colormap(obj.cm)
             %caxis([0,2000^obj.pwr])
-            axis off
-            set(gcf, 'Position', [0,0,800,800]);
-            set(gca,'position',[0 0 1 1],'units','normalized')
-            
-%             figure
-%             %subplot(1,2,2)
-%             [zz, xx] = meshgrid(obj.z_list, max(x,[],1));
-%             h = pcolor(xx, zz, abs(squeeze(propagated_wave_2d(:,round(size(x,2)/2),:))).^obj.pwr);
-%             %[zz_idx, xx_idx] = meshgrid(1:numel(obj.z_list), 1:size(x,2));
-%             %h = pcolor(xx*sqrt(2), zz, abs(interp3(propagated_wave_2d, xx_idx, xx_idx, zz_idx)).^1);
-%             axis equal
-%             axis tight
-%             set(h,'EdgeColor','none')
-%             colormap(obj.cm)
-%             %caxis([0,2000^obj.pwr])
-%             axis off
-%             set(gcf, 'Position', [0,0,800,800]);
-%             set(gca,'position',[0 0 1 1],'units','normalized')
-            
-            %fprintf('max: %f\n', max(abs(propagated_wave_2d(:))))
+            axis equal
+            %axis tight
+            %axis off
+            %set(gcf, 'Position', [0,0,800,800]);
+            %set(gca,'position',[0 0 1 1],'units','normalized')
         end
+        function plot_psf_xy(obj, propagated_wave_2d, x, y)
+            [~,z_plane_index] = max(squeeze(max(max(propagated_wave_2d))));
+            obj.plot_psf(x, y, abs(propagated_wave_2d(:,:,z_plane_index)).^obj.pwr);
+        end          
+        function plot_psf_xz(obj, propagated_wave_2d, x)
+            [zz, xx] = meshgrid(obj.z_list, max(x,[],1));
+            obj.plot_psf(xx, zz, abs(squeeze(max(propagated_wave_2d.^obj.pwr, [], 1))));
+        end            
+        function plot_psf_yz(obj, propagated_wave_2d, y)
+            [zz, yy] = meshgrid(obj.z_list, max(y,[],2));
+            obj.plot_psf(yy, zz, abs(squeeze(max(propagated_wave_2d.^obj.pwr, [], 2))));
+        end 
         
-        function res = get_psf_dimensions(~, field_3d, x, y, z)
+        function res = get_psf_dimensions(obj, field_3d, x, y)
+            z = obj.z_list;
             % use FWHM measurements to quantify the PSF dimensions
             r = sqrt(x.^2 + y.^2);
             max_intensity_sqr = max(abs(field_3d(:)).^4);
-            %[row, col, depth] = find(abs(field_3d).^4 == max_intensity_sqr);
-            %display(2 * [row/size(field_3d,1), col/size(field_3d,2), depth/size(field_3d,3)]) % should print 1 1 1
 
             half_or_more_r = max(abs(field_3d), [], 3).^4 >= max_intensity_sqr/2;
             r_res = 2 * max(r(half_or_more_r));
-
             half_or_more_z = squeeze(max(max(abs(field_3d)))).^4 >= max_intensity_sqr/2;
             z_res = max(z(half_or_more_z)) - min(z(half_or_more_z));
             
             max_val = max(abs(field_3d(:)));
             r_pos = x(max(abs(field_3d), [], 3) == max_val);
-            z_pos = z(max(max(abs(field_3d), [], 1), [], 2) == max_val);
+            z_pos = median(z(max(max(abs(field_3d), [], 1), [], 2) == max_val));
 
             max_intensity_sqr = max(max(abs(field_3d(:,:,ceil(numel(z)/2))).^4));
-            res = [[r_pos, z_pos] * 1e6, [r_res, z_res] * 1e6, max_intensity_sqr * 1e-17, sum(abs(field_3d(:)).^4) * 1e-19];
+            total_fluores = sum(abs(field_3d(:)).^4);
+            res = [[r_pos, z_pos] * 1e6, [r_res, z_res] * 1e6, log10(max_intensity_sqr), log10(total_fluores)];
         end
     end
 end
