@@ -2,7 +2,7 @@ classdef aol_fft
     
     properties
         adjustment = 1e2; % adjustments as necessary for the FFT - sets ratio of k to max(kx)
-        number_of_samples = 2.^9 - 1; % computational speed vs accuracy
+        number_of_samples = 2.^8 - 1; % computational speed vs accuracy
         k = 2*pi/800e-9; % wavevector
         z_list = linspace(-100,100,199)*1e-6; % distances from the nominal focal plane of the objective to evaluate the field at 
         do_plot = struct('aods', 0, 'input', 0, 'focal_plane', 0, 'angular_spec', 0); % plotting of the intermediate stages useful for debugging
@@ -39,7 +39,14 @@ classdef aol_fft
         function [propagated_wave_max, x, y] = calculate_psf_through_aol(obj, waves, time)
             % take a number of waves of phase shift for each AOD and a time to calculate the PSF
             propagated_wave_max = 0;
-            for wave_len = 800e-9 % [800, 800, 800-2.5, 800+2.5] * 1e-9 % [920, 920, 920-3.5, 920+3.5] * 1e-9 
+            if obj.k == 2*pi / 800e-9
+                wavelen_list = [800, 800, 800-2.5, 800+2.5] * 1e-9;
+            elseif obj.k == 2*pi / 920e-9
+                wavelen_list = [920, 920, 920-3.5, 920+3.5] * 1e-9;
+            else
+                wavelen_list = 2*pi / obj.k;
+            end
+            for wave_len = wavelen_list
                 obj.k = 2*pi/wave_len;
                 for t = time; 
                     [sampled_wave_2d, space_width] = obj.get_sampled_wavefunction(waves, t);
@@ -185,12 +192,12 @@ classdef aol_fft
             max_intensity_sqr = max(abs(field_3d(:)).^4);
 
             half_or_more_r = max(abs(field_3d), [], 3).^4 >= max_intensity_sqr/2;
-            r_res = 2 * max(r(half_or_more_r));
+            r_res = max(r(half_or_more_r)) - min(r(half_or_more_r));
             half_or_more_z = squeeze(max(max(abs(field_3d)))).^4 >= max_intensity_sqr/2;
             z_res = max(z(half_or_more_z)) - min(z(half_or_more_z));
             
             max_val = max(abs(field_3d(:)));
-            r_pos = x(max(abs(field_3d), [], 3) == max_val);
+            r_pos = median(x(max(abs(field_3d), [], 3) == max_val));
             z_pos = median(z(max(max(abs(field_3d), [], 1), [], 2) == max_val));
 
             max_intensity_sqr = max(max(abs(field_3d(:,:,ceil(numel(z)/2))).^4));

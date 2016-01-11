@@ -1,9 +1,15 @@
-function res = psf_4_drives(aol, time, a, z, v, w3, w4, w5, ws, wf)
+function res = psf_4_linear(aol, time, xy, z, v, w3, w4, w5, ws, wf)
     z_x = z + aol.spacing;
-    L_x = 2 * aol.spacing;
     z_y = z;
-    L_y = 2 * aol.spacing;    
-    b = - aol.V.^2 .* aol.k ./ (2*pi) .* [...
+    L_x = 2 * aol.spacing;
+    L_y = 2 * aol.spacing;   
+    wavelen = (2*pi) ./ aol.k;
+    pdr = 0;
+    
+    df = - aol.V ./ wavelen .* xy(:) ./ (pdr .* [(L_x + z_x); (L_y + z_y)] + [z_x; z_y]);
+    a = 0e6 + [pdr .* df(1,:); pdr .* df(2,:); - df(1,:); - df(2,:)];
+    
+    b = - aol.V.^2 ./ wavelen .* [...
         (1 + v(1)) ./ (L_x .* (1 + v(1)) + 2 * z_x);...
         (1 + v(2)) ./ (L_y .* (1 + v(2)) + 2 * z_y);... 
         (1 - v(1)) ./ (2 * z_x);...
