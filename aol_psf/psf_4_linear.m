@@ -1,4 +1,4 @@
-function res = psf_4_linear(aol, time, xy, z, v, w3, w4, w5, ws, wf)
+function res = psf_4_linear(aol, time, xy, z, v, w3, w4, w5, ws, wf, plot)
     z_x = z + aol.spacing;
     z_y = z;
     L_x = 2 * aol.spacing;
@@ -24,5 +24,5 @@ function res = psf_4_linear(aol, time, xy, z, v, w3, w4, w5, ws, wf)
     y2 = [w1(4), w2(4), w3, w4(4), w5];   
     aod_drives_in_waves = {x1, y1, x2, y2};
     
-    res = get_psf(aol, time, ws, wf, aod_drives_in_waves, true);
+    res = get_psf(aol, time, ws, wf, aod_drives_in_waves, plot);
 end

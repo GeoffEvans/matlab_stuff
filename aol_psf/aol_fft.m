@@ -8,10 +8,10 @@ classdef aol_fft
         do_plot = struct('aods', 0, 'input', 0, 'focal_plane', 0, 'angular_spec', 0); % plotting of the intermediate stages useful for debugging
         V = 613; % speed of sound in TeO2
         half_width = 7.5e-3; % half the aperture width
+        beam_sigma = 3.75e-3; % 68% of field within +- beam_sigma, 95% of field within +- 2 beam_sigma, equiv. beam intensity falls off to 1/e after beam_sigma
         scaling = 0.8; % scaling by the relay between AOL and objective
         mag = 20;
         tube_focal_len = 160e-3;
-        beam_sigma = 3e-3; % 68% of field within +- beam_sigma, 95% of field within +- 2 beam_sigma, equiv. beam intensity falls off to 1/e after beam_sigma
         pwr = 1;
         cm = 'jet';
         spacing = 0.04554;
@@ -27,33 +27,37 @@ classdef aol_fft
             waves.spherical = ws;
             waves.ac_angle = 0; % walk off angle in degrees
 
-            [propagated_wave, x, y] = obj.calculate_psf_through_aol(waves, time);
+            [intensity, x, y] = obj.calculate_psf_through_aol(waves, time);
             if plot
                 figure()
-                subplot(1,2,1); obj.plot_psf_xy(propagated_wave, x, y);
-                subplot(1,2,2); obj.plot_psf_xz(propagated_wave, x);
+                subplot(1,2,1); obj.plot_psf_xy(intensity, x, y);
+                subplot(1,2,2); obj.plot_psf_xz(intensity, x);
             end
-            res = obj.get_psf_dimensions(propagated_wave, x, y);
+            res = obj.get_psf_dimensions(intensity, x, y);
         end
 
-        function [propagated_wave_max, x, y] = calculate_psf_through_aol(obj, waves, time)
+        function [intensity_sum, x, y] = calculate_psf_through_aol(obj, waves, time)
             % take a number of waves of phase shift for each AOD and a time to calculate the PSF
-            propagated_wave_max = 0;
+            intensity_sum = 0;
             if obj.k == 2*pi / 800e-9
-                wavelen_list = [800, 800, 800-2.5, 800+2.5] * 1e-9;
+                strength = [1, 1/sqrt(2), 1/sqrt(2), 1/2, 1/2, 1/4, 1/4];
+                wavelen_list = [800, 800-1.75, 800+1.75, 800-2.5, 800+2.5, 800-3.5, 800+3.5] * 1e-9;
             elseif obj.k == 2*pi / 920e-9
-                wavelen_list = [920, 920, 920-3.5, 920+3.5] * 1e-9;
+                strength = [1, 1/sqrt(2), 1/sqrt(2), 1/2, 1/2];
+                wavelen_list = [920, 920-2.5, 920+2.5, 920-3.5, 920+3.5] * 1e-9;
             else
+                strength = 1;
                 wavelen_list = 2*pi / obj.k;
             end
-            for wave_len = wavelen_list
-                obj.k = 2*pi/wave_len;
+            for n = 1:numel(wavelen_list)
+                obj.k = 2*pi/wavelen_list(n);
+                propagated_sum = 0;
                 for t = time; 
                     [sampled_wave_2d, space_width] = obj.get_sampled_wavefunction(waves, t);
                     [propagated_wave, x, y] = obj.calculate_psf(sampled_wave_2d, space_width);
-                    propagated_wave = propagated_wave ./ max(propagated_wave(:));
-                    propagated_wave_max = max(propagated_wave_max, propagated_wave);
+                    propagated_sum = propagated_sum + propagated_wave;
                 end
+                intensity_sum = intensity_sum + abs(propagated_wave).^2 * strength(n);
             end
         end
         
@@ -187,22 +191,20 @@ classdef aol_fft
         
         function res = get_psf_dimensions(obj, field_3d, x, y)
             z = obj.z_list;
-            % use FWHM measurements to quantify the PSF dimensions
-            r = sqrt(x.^2 + y.^2);
-            max_intensity_sqr = max(abs(field_3d(:)).^4);
+            max_intensity_sqr = max(abs(field_3d(:)).^2);
 
-            half_or_more_r = max(abs(field_3d), [], 3).^4 >= max_intensity_sqr/2;
-            r_res = max(r(half_or_more_r)) - min(r(half_or_more_r));
-            half_or_more_z = squeeze(max(max(abs(field_3d)))).^4 >= max_intensity_sqr/2;
+            half_or_more_x = squeeze(max(abs(field_3d), [], 3)).^2 >= max_intensity_sqr/2;
+            x_res = max(x(half_or_more_x)) - min(x(half_or_more_x));
+            half_or_more_z = squeeze(max(max(abs(field_3d)))).^2 >= max_intensity_sqr/2;
             z_res = max(z(half_or_more_z)) - min(z(half_or_more_z));
             
             max_val = max(abs(field_3d(:)));
-            r_pos = median(x(max(abs(field_3d), [], 3) == max_val));
+            x_pos = median(x(max(abs(field_3d), [], 3) == max_val));
             z_pos = median(z(max(max(abs(field_3d), [], 1), [], 2) == max_val));
 
-            max_intensity_sqr = max(max(abs(field_3d(:,:,ceil(numel(z)/2))).^4));
-            total_fluores = sum(abs(field_3d(:)).^4);
-            res = [[r_pos, z_pos] * 1e6, [r_res, z_res] * 1e6, log10(max_intensity_sqr), log10(total_fluores)];
+            max_intensity_sqr = max(max(abs(field_3d(:,:,ceil(numel(z)/2))).^2));
+            total_fluores = sum(abs(field_3d(:)).^2);
+            res = [[x_pos, z_pos] * 1e6, [x_res, z_res] * 1e6, log10(max_intensity_sqr), log10(total_fluores)];
         end
     end
 end
