@@ -195,8 +195,12 @@ classdef aol_fft
 
             half_or_more_x = squeeze(max(abs(field_3d), [], 3)).^2 >= max_intensity_sqr/2;
             x_res = max(x(half_or_more_x)) - min(x(half_or_more_x));
-            half_or_more_z = squeeze(max(max(abs(field_3d)))).^2 >= max_intensity_sqr/2;
+            
+            z_sqr_max = squeeze(max(max(abs(field_3d)))).^2;
+            half_or_more_z = z_sqr_max >= max_intensity_sqr/2;
             z_res = max(z(half_or_more_z)) - min(z(half_or_more_z));
+            [sigma,~,~] = george_gaussfit(z, z_sqr_max);
+            z_gauss_res = 2.35 * sigma;
             
             max_val = max(abs(field_3d(:)));
             x_pos = median(x(max(abs(field_3d), [], 3) == max_val));
@@ -204,7 +208,7 @@ classdef aol_fft
 
             max_intensity_sqr = max(max(abs(field_3d(:,:,ceil(numel(z)/2))).^2));
             total_fluores = sum(abs(field_3d(:)).^2);
-            res = [[x_pos, z_pos] * 1e6, [x_res, z_res] * 1e6, log10(max_intensity_sqr), log10(total_fluores)];
+            res = [[x_pos, z_pos] * 1e6, [x_res, z_gauss_res] * 1e6, log10(max_intensity_sqr), log10(total_fluores)];
         end
     end
 end

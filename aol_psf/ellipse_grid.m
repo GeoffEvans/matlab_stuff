@@ -13,20 +13,17 @@ x_fwhm = min(x_fwhm, 3.132);
 % ylim([min(y_mesh(:))-excess, max(y_mesh(:))+excess])
 % 
 % figure
+rng = linspace(-250,250);
 hold on
-plot(mean(x_mesh), mean(x_fwhm))
+plot(rng, spline(mean(x_mesh(:,[1:5,7:12])),mean(x_fwhm(:,[1:5,7:12])),rng),'r')
 %plot(x_mesh, x_fwhm, 'rx')
-plot(mean(y_mesh'), mean(y_fwhm'))
+plot(rng, spline(mean(y_mesh([1:5,7:12],:)'),mean(y_fwhm([1:5,7:12],:)'),rng),'r')
 %plot(y_mesh, y_fwhm, 'bx')
 
-x_u = unique(x_mesh);
-y_u = unique(y_mesh);
 wavelength = 920e-3;
 wavelength_fwhm = 7e-3 / sqrt(2);
-focal_fwhm = abs(y_u) ./ wavelength .* wavelength_fwhm;
-angular_fwhm = abs(x_u) ./ wavelength .* wavelength_fwhm;
-plot(x_u, angular_fwhm, 'k--')
-plot(y_u, focal_fwhm, 'k--')
+angular_fwhm = abs(rng) ./ wavelength .* wavelength_fwhm;
+plot(rng, angular_fwhm, 'k--')
 ylim([0, 10])
 
 end

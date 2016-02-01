@@ -1,10 +1,11 @@
 aol = aol_fft();
-aol.adjustment = 400;
+aol.adjustment = 380;
 aol.number_of_samples = 2^9 - 1;
 aol.k = 2*pi/920e-9;
 aol.spacing = 0;
 
 [x_fwhm6, z_fwhm6] = plot_na(aol, 0.6);
+[x_fwhm7, z_fwhm7] = plot_na(aol, 0.7);
 [x_fwhm8, z_fwhm8] = plot_na(aol, 0.8);
 
 % aol.k = 2*pi/800.1e-9;
