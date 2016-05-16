@@ -4,8 +4,8 @@ L = 1;
 num_rays = 101;
 
 w1 = 0;
-w2 = 0.4;
-w3 = 5;
+w2 = 1/3;
+w3 = 0;
 w4 = 0;
 w5 = 0;
 
@@ -16,10 +16,10 @@ rays_direction = -(w(rays_start + Q) - w(rays_start - Q)) / 2 / Q;
 rays_stop = rays_start + rays_direction * L;
 
 gamma = 1 ./ (1 - L*w2);
-w_stop1 = @(x) w1*x + gamma.^2*w2*x.^2/2 + gamma.^3*w3*x.^3/6 + gamma.^4*w4*x.^4/24 + gamma^5*w5*x.^5/120;
-w_stop2 = @(x) w1*x + gamma.^2*w2*x.^2/2 + gamma.^3*w3*x.^3/6 + gamma.^4*(w4 + 3*L*(gamma*w3^2))*x.^4/24 + gamma^5*w5*x.^5/120;
-w_stop3 = @(x) w1*x + gamma.^2*w2*x.^2/2 + gamma.^3*w3*x.^3/6 + gamma.^4*(w4 + 3*L*gamma*w3^2)*x.^4/24 + gamma^5*(w5 + 5*gamma*L*w3*(2*w4+3*L*gamma*w3^2))*x.^5/120;
-w_stop3 = @(x) w1*x + gamma.^2*w2*x.^2/2 + gamma.^3*w3*x.^3/6 + gamma.^4*(w4 + 3*L*gamma*w3^2)*x.^4/24 + gamma^5*(w5 + 5*gamma*L*w3*(2*w4+3*L*gamma*w3^2-6*w2^3))*x.^5/120;
+w_stop1 = @(x) w1*x + gamma*w2*x.^2/2 + gamma.^3*w3*x.^3/6 + gamma.^4*w4*x.^4/24 + gamma^5*w5*x.^5/120;
+w_stop2 = @(x) w1*x + gamma*w2*x.^2/2 + gamma.^3*w3*x.^3/6 + gamma.^4*(w4 + 3*L*(gamma*w3^2))*x.^4/24 + gamma^5*w5*x.^5/120;
+w_stop3 = @(x) w1*x + gamma*w2*x.^2/2 + gamma.^3*w3*x.^3/6 + gamma.^4*(w4 + 3*L*gamma*w3^2)*x.^4/24 + gamma^5*(w5 + 5*gamma*L*w3*(2*w4+3*L*gamma*w3^2))*x.^5/120;
+w_stop3 = @(x) w1*x + gamma*w2*x.^2/2 + gamma.^3*w3*x.^3/6 + gamma.^4*(w4 + 3*L*gamma*w3^2)*x.^4/24 + gamma^5*(w5 + 5*gamma*L*w3*(2*w4+3*L*gamma*w3^2-6*w2^3))*x.^5/120;
 
 figure()
 set(gcf, 'Position', get(0,'Screensize')); % Maximize figure.
@@ -32,6 +32,6 @@ plot(rays_stop, w(rays_start), 'o')
 plot(rays_start, w_stop3(rays_start), 'm')
 plot(rays_start, w_stop2(rays_start), 'b-.')
 plot(rays_start, w_stop1(rays_start), 'g--')
-
+ylim([0, 4e-5])
 
 hold off
