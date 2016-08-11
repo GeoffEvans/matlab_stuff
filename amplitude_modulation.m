@@ -6,13 +6,14 @@ function amplitude_modulation()
     ylabel('Diffraction efficiency')
     rads = linspace(0, 23.52e-3);
     angular_deviation = rads/2/pi*360*2.226;
-    powers = linspace(12, 0);
+    powers = [0.3, 1.25, 2.5, 5, 7, 10.5]; %linspace(12, 0);
     max_effs = zeros(size(rads));
     max_effs_low = zeros(size(rads));
     for p = powers
         amp = amplitude(p, transducer_width);
         effs = get_eff(rads, amp, transducer_width);
-        plot(angular_deviation, effs, 'Color', [(p > 2) && (p <= 4) || (p > 8) && (p <= 10), (p > 4) && (p <= 8), (p < 2) || (p > 6) && (p <= 8) || (p > 2) && (p <= 4)]);
+        plt = plot(angular_deviation, effs, 'Color', [(p == 2.5) * 0.5 + (p == 10.5) + (p == 7) + (p == 1.25) * 0.3, (p == 5) * 0.5 + (p == 1.25) * 0.75 + (p == 2.5) * 0.5, (p == 2.5) * 0.5 + (p == 7) + 0.93 * (p == 1.25)]);
+        set(plt, 'linewidth', 2);
         max_effs = max(effs, max_effs);
         if p < 4
             max_effs_low = max(effs, max_effs_low);
